@@ -13,7 +13,7 @@ func (d *Device) SetSleep(mode SleepConfig) error {
 	log.Debug("Set the device in SLEEP mode with the lowest current consumption possible", "mode", mode)
 
 	commands := []uint8{uint8(CmdSetSleep), uint8(mode)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set sleep mode %v to %v: %w", CmdSetStandby, mode, err)
 	}
 
@@ -27,7 +27,7 @@ func (d *Device) SetStandby(mode StandbyMode) error {
 	log.Debug("Set the device in a configuration mode which is at an intermediate level of consumption", "mode", mode)
 
 	commands := []uint8{uint8(CmdSetStandby), uint8(mode)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set standby mode %v to %v: %w", CmdSetStandby, mode, err)
 	}
 
@@ -40,7 +40,7 @@ func (d *Device) SetFs() error {
 	log := slog.With("func", "Device.SetFs()", "params", "(-)", "return", "(error)", "lib", "sx126x")
 	log.Debug("set the device in the frequency synthesis mode where the PLL is locked to the carrier frequency")
 
-	if err := d.SPI.Tx([]uint8{uint8(CmdSetFs)}, nil); err != nil {
+	if err := d.Write([]uint8{uint8(CmdSetFs)}, nil); err != nil {
 		return fmt.Errorf("Could not set frequency synthesis mode %v: %w", CmdSetFs, err)
 	}
 
@@ -60,7 +60,7 @@ func (d *Device) SetTx(timeout uint32) error {
 		uint8(timeout),
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set device in transmit mode %v with timeout %v: %w", CmdSetTx, timeout, err)
 	}
 
@@ -80,7 +80,7 @@ func (d *Device) SetRx(timeout uint32) error {
 		uint8(timeout),
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set device in receiver mode %v with timeout %v: %w", CmdSetRx, timeout, err)
 	}
 
@@ -99,7 +99,7 @@ func (d *Device) StopTimerOnPreamble(enable bool) error {
 	}
 
 	commands := []uint8{uint8(CmdStopOnPreamble), uint8(param)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set timer detection param %v: %w", CmdStopOnPreamble, err)
 	}
 
@@ -119,7 +119,7 @@ func (d *Device) SetRxDutyCycle(rxPeriod, sleepPeriod uint32) error {
 	commands = append(commands, rp...)
 	commands = append(commands, sp...)
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set RX duty cycle; RX period: %v ; Sleep period: %v: %w", rxPeriod, sleepPeriod, err)
 	}
 
@@ -136,7 +136,7 @@ func (d *Device) SetCAD() error {
 		return fmt.Errorf("Channel Activity Detection is a LoRa specific mode of operation")
 	}
 
-	if err := d.SPI.Tx([]uint8{uint8(CmdSetCad)}, nil); err != nil {
+	if err := d.Write([]uint8{uint8(CmdSetCad)}, nil); err != nil {
 		return fmt.Errorf("Could not set Channel Activity Detection mode %v: %w", CmdSetCad, err)
 	}
 
@@ -149,7 +149,7 @@ func (d *Device) SetTxContinuousWave() error {
 	log := slog.With("func", "Device.SetTxContinuousWave()", "params", "(-)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Test command available for all packet types to generate a continuous wave (RF tone)")
 
-	if err := d.SPI.Tx([]uint8{uint8(CmdSetTxContinuousWave)}, nil); err != nil {
+	if err := d.Write([]uint8{uint8(CmdSetTxContinuousWave)}, nil); err != nil {
 		return fmt.Errorf("Could not set TX continuous wave mode %v: %w", CmdSetTxContinuousWave, err)
 	}
 
@@ -163,7 +163,7 @@ func (d *Device) SetTxInfinitePreamble() error {
 	log.Debug("FSK: Test command to generate an infinite sequence of alternating zeros and ones")
 	log.Debug("LoRa: Constantly modulate LoRa preamble symbols")
 
-	if err := d.SPI.Tx([]uint8{uint8(CmdSetTxInfinitePreamble)}, nil); err != nil {
+	if err := d.Write([]uint8{uint8(CmdSetTxInfinitePreamble)}, nil); err != nil {
 		return fmt.Errorf("Could not set TX infinite preamble mode %v: %w", CmdSetTxInfinitePreamble, err)
 	}
 
@@ -177,7 +177,7 @@ func (d *Device) SetRegulatorMode(mode RegulatorMode) error {
 	log.Debug("Allow to specify if DC-DC or LDO is used for power regulation", "mode", mode)
 
 	commands := []uint8{uint8(CmdSetRegulatorMode), uint8(mode)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set power regulator mode %v: %w", mode, err)
 	}
 
@@ -191,7 +191,7 @@ func (d *Device) Calibrate(param CalibrationParam) error {
 	log.Debug("Calibrate function starts the calibration of a block defined by param", "param", param)
 
 	commands := []uint8{uint8(CmdCalibrate), uint8(param)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not calibrate modem %v: %w", param, err)
 	}
 
@@ -205,7 +205,7 @@ func (d *Device) CalibrateImage(freq1, freq2 CalibrationImageFreq) error {
 	log.Debug("Device operating frequency band")
 
 	commands := []uint8{uint8(CmdCalibrateImage), uint8(freq1), uint8(freq2)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set modem frequency band: %v - %v: %w", freq1, freq2, err)
 	}
 
@@ -304,7 +304,7 @@ func (d *Device) SetPaConfig(opts ...OptionsPa) error {
 	}
 
 	commands := []uint8{uint8(CmdSetPaConfig), cfg.PaDutyCycle, cfg.HpMax, uint8(cfg.DeviceSel), cfg.PaLut}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set PA calibration params: %w", err)
 	}
 
@@ -326,7 +326,7 @@ func (d *Device) SetRxTxFallbackMode(mode FallbackMode) error {
 	log.Debug("Set mode the chip goes after a successful transmission or after a packet reception")
 
 	commands := []uint8{uint8(CmdSetRxTxFallbackMode), uint8(mode)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set RX/TX fallback mode to %v: %w", mode, err)
 	}
 
@@ -380,7 +380,7 @@ func (d *Device) SetDioIrqParams(irqMask IrqMask, dioIRQ ...IrqMask) error {
 	}
 
 	commands := append([]uint8{uint8(CmdSetDioIrqParams)}, irqs...)
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set IRQ and DIO masks: %w", err)
 	}
 
@@ -400,7 +400,7 @@ func (d *Device) GetIrqStatus() (uint16, error) {
 	commands := []uint8{uint8(CmdGetIrqStatus), OpCodeNop, OpCodeNop, OpCodeNop}
 	rx := make([]uint8, len(commands))
 
-	if err := d.SPI.Tx(commands, rx); err != nil {
+	if err := d.Write(commands, rx); err != nil {
 		return 0, fmt.Errorf("Could not get IRQ register status: %w", err)
 	}
 	status := uint16(rx[2])<<8 | uint16(rx[3])
@@ -430,31 +430,34 @@ func (d *Device) ClearIrqStatus(mask IrqMask) error {
 	log := slog.With("func", "Device.ClearIrqStatus()", "params", "(uint16)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Clear IRQ register mask")
 
-	switch d.Config.Modem {
-	case "lora":
-		fskBits := IrqSyncWordValid
-		if mask&fskBits != 0 {
-			return fmt.Errorf("SyncWordValid IRQ available only in FSK mode")
-		}
-	case "fsk":
-		illegalBits := map[IrqMask]string{
-			IrqHeaderValid: "IrqHeaderValid",
-			IrqHeaderErr:   "IrqHeaderErr",
-			IrqCadDone:     "IrqCadDone",
-			IrqCadDetected: "IrqCadDetected",
-		}
-
-		for bit, name := range illegalBits {
-			if mask&bit != 0 {
-				return fmt.Errorf("%s IRQ available only in LoRa mode", name)
+	// IrqAll would trigger the warning, but it's a nice shorthand mask
+	if mask != IrqAll {
+		switch d.Config.Modem {
+		case "lora":
+			fskBits := IrqSyncWordValid
+			if mask&fskBits != 0 {
+				return fmt.Errorf("SyncWordValid IRQ available only in FSK mode")
 			}
+		case "fsk":
+			illegalBits := map[IrqMask]string{
+				IrqHeaderValid: "IrqHeaderValid",
+				IrqHeaderErr:   "IrqHeaderErr",
+				IrqCadDone:     "IrqCadDone",
+				IrqCadDetected: "IrqCadDetected",
+			}
+
+			for bit, name := range illegalBits {
+				if mask&bit != 0 {
+					return fmt.Errorf("%s IRQ available only in LoRa mode", name)
+				}
+			}
+		default:
+			return fmt.Errorf("Unknown modem type: %v", d.Config.Modem)
 		}
-	default:
-		return fmt.Errorf("Unknown modem type: %v", d.Config.Modem)
 	}
 
 	commands := []uint8{uint8(CmdClearIrqStatus), OpCodeNop, uint8(mask >> 8), uint8(mask)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not clear IRQ register mask: %w", err)
 	}
 
@@ -473,7 +476,7 @@ func (d *Device) SetDIO2AsRfSwitchCtrl(enable bool) error {
 	}
 
 	commands := []uint8{uint8(CmdSetDio2AsRfSwitchCtrl), uint8(extSw)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set DIO2 as external RF switch: %w", err)
 	}
 
@@ -494,7 +497,7 @@ func (d *Device) SetDIO3AsTCXOCtrl(voltage TcxoVoltage, timeout uint32) error {
 		uint8(timeout),
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set DIO3 as external reference voltage %v before timeout %v: %w", voltage, timeout, err)
 	}
 
@@ -518,7 +521,7 @@ func (d *Device) SetRfFrequency(frequency physic.Frequency) error {
 		uint8(freqRf),
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set RF frequency [% X]: %w", commands, err)
 	}
 
@@ -534,7 +537,7 @@ func (d *Device) SetPacketType(packet PacketType) error {
 	log.Debug("Set the SX126x radio in LoRa or in FSK mode")
 
 	commands := []uint8{uint8(CmdSetPacketType), uint8(packet)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set packet type %v: %w", packet, err)
 	}
 
@@ -550,7 +553,7 @@ func (d *Device) GetPacketType() (uint8, error) {
 	commands := []uint8{uint8(CmdGetPacketType), OpCodeNop, OpCodeNop}
 	rx := make([]uint8, len(commands))
 
-	if err := d.SPI.Tx(commands, rx); err != nil {
+	if err := d.Write(commands, rx); err != nil {
 		return 0, fmt.Errorf("Could not get packet type: %w", err)
 	}
 	packet := rx[2]
@@ -565,7 +568,7 @@ func (d *Device) SetTxParams(dbm int8, rampTime RampTime) error {
 	log.Debug("Set TX output power")
 
 	commands := []uint8{uint8(CmdSetTxParams), uint8(dbm), uint8(rampTime)}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set TX output power %v and ramp time %v: %w", dbm, rampTime, err)
 	}
 
@@ -672,7 +675,7 @@ func (d *Device) SetModulationParams(opts ...OptionsModulation) error {
 		}
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set modulation params: %w", err)
 	}
 
@@ -799,7 +802,7 @@ func (d *Device) SetPacketParams(opts ...OptionsPacket) error {
 		}
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set packet parameters: %w", err)
 	}
 
@@ -857,7 +860,7 @@ func (d *Device) SetCadParams(opts ...OptionsCAD) error {
 		uint8(cfg.Timeout),
 	}
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set CAD params: %w", err)
 	}
 
@@ -871,7 +874,7 @@ func (d *Device) SetBufferBaseAddress(txBaseAddress, rxBaseAddress uint8) error 
 	log.Debug("Set the base addresses in the data buffer in all modes of operations for the packet handing operation in TX and RX mode")
 
 	commands := []uint8{uint8(CmdSetBufferBaseAddress), txBaseAddress, rxBaseAddress}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set TX and RX buffer base addresses: %w", err)
 	}
 
@@ -885,7 +888,7 @@ func (d *Device) SetLoRaSymbNumTimeout(symbols uint8) error {
 	log.Debug("When the `symbols` param is set the 0, the modem will validate the reception as soon as a LoRa Symbol has been detected")
 
 	commands := []uint8{uint8(CmdSetSymbNumTimeout), symbols}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not set symbols number timeout: %w", err)
 	}
 
@@ -901,7 +904,7 @@ func (d *Device) GetStatus() (ModemStatus, error) {
 	tx := []uint8{uint8(CmdGetStatus), OpCodeNop}
 	rx := make([]uint8, len(tx))
 
-	if err := d.SPI.Tx(tx, rx); err != nil {
+	if err := d.Write(tx, rx); err != nil {
 		return ModemStatus{}, fmt.Errorf("Could not get modem status: %w", err)
 	}
 
@@ -922,7 +925,7 @@ func (d *Device) GetRxBufferStatus() (BufferStatus, error) {
 	tx := []uint8{uint8(CmdGetBufferStatus), OpCodeNop, OpCodeNop, OpCodeNop}
 	rx := make([]uint8, len(tx))
 
-	if err := d.SPI.Tx(tx, rx); err != nil {
+	if err := d.Write(tx, rx); err != nil {
 		return BufferStatus{}, fmt.Errorf("Could not get RX buffer status: %w", err)
 	}
 
@@ -941,7 +944,7 @@ func (d *Device) GetPacketStatus() (PacketStatus, error) {
 	tx := []uint8{uint8(CmdGetPacketStatus), OpCodeNop, OpCodeNop, OpCodeNop, OpCodeNop}
 	rx := make([]uint8, len(tx))
 
-	if err := d.SPI.Tx(tx, rx); err != nil {
+	if err := d.Write(tx, rx); err != nil {
 		return PacketStatus{}, fmt.Errorf("Could not get packet status: %w", err)
 	}
 
@@ -961,7 +964,7 @@ func (d *Device) GetRssiInst() (int8, error) {
 	tx := []uint8{uint8(CmdGetPacketRssi), OpCodeNop, OpCodeNop}
 	rx := make([]uint8, len(tx))
 
-	if err := d.SPI.Tx(tx, rx); err != nil {
+	if err := d.Write(tx, rx); err != nil {
 		return 0, fmt.Errorf("Could not get packet instant RSSI value: %w", err)
 	}
 	rssi := -int8(rx[2] / 2) // dBm
@@ -984,7 +987,7 @@ func (d *Device) GetStats() (PacketStats, error) {
 
 	rx := make([]uint8, len(tx))
 
-	if err := d.SPI.Tx(tx, rx); err != nil {
+	if err := d.Write(tx, rx); err != nil {
 		return PacketStats{}, fmt.Errorf("Could not get packet statistics: %w", err)
 	}
 
@@ -1010,7 +1013,7 @@ func (d *Device) ResetStats(resetInternalCache bool) error {
 	commands := make([]uint8, 7) // Seven NOPs
 	commands[0] = uint8(CmdResetStats)
 
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not reset device statistics: %w", err)
 	}
 
@@ -1031,7 +1034,7 @@ func (d *Device) GetDeviceErrors() (DeviceError, error) {
 	tx := []uint8{uint8(CmdGetDeviceErrors), OpCodeNop, OpCodeNop, OpCodeNop}
 	rx := make([]uint8, len(tx))
 
-	if err := d.SPI.Tx(tx, rx); err != nil {
+	if err := d.Write(tx, rx); err != nil {
 		return 0, fmt.Errorf("Could not get device errors: %w", err)
 	}
 	d.Status.Error = DeviceError(uint16(rx[2])<<8 | uint16(rx[3]))
@@ -1046,7 +1049,7 @@ func (d *Device) ClearDeviceErrors(resetInternalCache bool) error {
 	log.Debug("Clear all errors recorded in the device")
 
 	commands := []uint8{uint8(CmdResetErrors), OpCodeNop, OpCodeNop}
-	if err := d.SPI.Tx(commands, nil); err != nil {
+	if err := d.Write(commands, nil); err != nil {
 		return fmt.Errorf("Could not reset device errors: %w", err)
 	}
 

@@ -3,6 +3,7 @@ package sgp30
 import (
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 func (d *Device) IaqInit() error {
@@ -13,6 +14,9 @@ func (d *Device) IaqInit() error {
 	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send init command to SGP30 sensor: %w", err)
 	}
+
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
 
 	log.Info("Init command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdIaqInit)
 	return nil
@@ -28,8 +32,15 @@ func (d *Device) MeasureIaq(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdMeasureIaqMSB), uint8(CmdMeasureIaqLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send measure command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(12 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
+		return fmt.Errorf("Could not read measured values from SGP30 sensor: %w", err)
 	}
 
 	// Function validates CRC after it was received to `data` buffer (duh)
@@ -56,7 +67,14 @@ func (d *Device) GetIaqBaseline(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdGetIaqBaselineMSB), uint8(CmdGetIaqBaselineLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
+		return fmt.Errorf("Could not get IAQ baseline command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
 		return fmt.Errorf("Could not get IAQ baseline values from SGP30 sensor: %w", err)
 	}
 
@@ -73,8 +91,7 @@ func (d *Device) GetIaqBaseline(data []uint8) error {
 	return nil
 }
 
-// 6 bytes in `data`	: (eCO2_MSB, eCO2_LSB, eCO2_CRC, TVOC_MSB, TVOC_LSB, TVOC_CRC)
-// 6 bytes sent to `i2c`: (TVOC_MSB, TVOC_LSB, TVOC_CRC, eCO2_MSB, eCO2_LSB, eCO2_CRC)
+// 6 bytes: (eCO2_MSB, eCO2_LSB, eCO2_CRC, TVOC_MSB, TVOC_LSB, TVOC_CRC)
 func (d *Device) SetIaqBaseline(data []uint8) error {
 	log := slog.With("func", "Device.SetIaqBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("SGP30 set IAQ baseline calibration value")
@@ -91,15 +108,14 @@ func (d *Device) SetIaqBaseline(data []uint8) error {
 		return fmt.Errorf("TVOC CRC validation error: %w", err)
 	}
 
-	// TVOC_MSB, TVOC_LSB, TVOC_CRC, eCO2_MSB, eCO2_LSB, eCO2_CRC)
 	command := []uint8{uint8(CmdSetIaqBaselineMSB), uint8(CmdSetIaqBaselineLSB)}
-
-	baseline := []uint8{data[3], data[4], data[5], data[0], data[1], data[2]}
-	baseline = append(command, baseline...)
-
+	baseline := append(command, data...)
 	if err := d.I2C.Tx(uint16(d.Config.Address), baseline, nil); err != nil {
 		return fmt.Errorf("Could not set IAQ baseline values to SGP30 sensor: %w", err)
 	}
+
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
 
 	log.Info("IAQ set baseline command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSetIaqBaseline)
 	return nil
@@ -124,6 +140,9 @@ func (d *Device) SetAbsoluteHumidity(data []uint8) error {
 		return fmt.Errorf("Could not set absolute humidity calibration values to SGP30 sensor: %w", err)
 	}
 
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
+
 	log.Info("Absolute humidity calibration command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSetAbsoluteHumidity)
 	return nil
 }
@@ -139,8 +158,15 @@ func (d *Device) MeasureTest(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdMeasureIaqMSB), uint8(CmdMeasureTestLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send measure test command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(220 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
+		return fmt.Errorf("Could not read measure test values from SGP30 sensor: %w", err)
 	}
 
 	testValue := uint16(data[0])<<8 | uint16(data[1])
@@ -166,8 +192,15 @@ func (d *Device) GetFeatureSet(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdGetFeatureSetMSB), uint8(CmdGetFeatureSetLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send get feature set command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
+		return fmt.Errorf("Could not read get feature set data from SGP30 sensor: %w", err)
 	}
 
 	testValue := uint16(data[0])<<8 | uint16(data[1])
@@ -193,8 +226,15 @@ func (d *Device) MeasureRaw(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdMeasureRawMSB), uint8(CmdMeasureRawLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send measure raw command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(25 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
+		return fmt.Errorf("Could not read raw data from SGP30 sensor: %w", err)
 	}
 
 	if err := validateCRC(data[0:3]); err != nil {
@@ -218,8 +258,15 @@ func (d *Device) GetTvocInceptiveBaseline(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdGetTvocInceptiveBaselineMSB), uint8(CmdGetTvocInceptiveBaselineLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send inceptive baseline set command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
+		return fmt.Errorf("Could not read inceptive baseline value from SGP30 sensor: %w", err)
 	}
 
 	if err := validateCRC(data); err != nil {
@@ -252,6 +299,9 @@ func (d *Device) SetTvocBaseline(data []uint8) error {
 		return fmt.Errorf("Could not set TVOC baseline calibration values to SGP30 sensor: %w", err)
 	}
 
+	// Table 10 Measurement commands
+	time.Sleep(10 * time.Millisecond)
+
 	log.Info("TVOC baseline calibration command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSetTvocBaseline)
 	return nil
 }
@@ -278,8 +328,15 @@ func (d *Device) GetSerialId(data []uint8) error {
 	}
 
 	command := []uint8{uint8(CmdGetSerialIdMSB), uint8(CmdGetSerialIdLSB)}
-	if err := d.I2C.Tx(uint16(d.Config.Address), command, data); err != nil {
+	if err := d.I2C.Tx(uint16(d.Config.Address), command, nil); err != nil {
 		return fmt.Errorf("Could not send serial ID command to SGP30 sensor: %w", err)
+	}
+
+	// Table 10 Measurement commands
+	time.Sleep(1 * time.Millisecond)
+
+	if err := d.I2C.Tx(uint16(d.Config.Address), nil, data); err != nil {
+		return fmt.Errorf("Could not read serial ID from SGP30 sensor: %w", err)
 	}
 
 	if err := validateCRC(data[0:3]); err != nil {

@@ -25,7 +25,3 @@ type Device struct {
 	I2C    Bus
 	Config *Config
 }
-
-type Sensor struct {
-	hw *Device
-}

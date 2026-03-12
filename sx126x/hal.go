@@ -98,12 +98,17 @@ func (d *Device) WriteRegister(address uint16, data []uint8) (uint8, error) {
 	}, data...)
 	status := make([]uint8, len(commands))
 
-	if err := d.SPI.Tx(commands, status); err != nil {
+	if err := d.Write(commands, status); err != nil {
 		return 0, fmt.Errorf("Could not write data to register at address 0x%04X: %w", address, err)
 	}
 
-	log.Debug("Data write to register success", "address", fmt.Sprintf("0x%04X", address))
-	return status[0], nil
+	// log.Debug("SPI write raw",
+	// 	"tx", fmt.Sprintf("% X", commands),
+	// 	"rx", fmt.Sprintf("% X", status),
+	// )
+
+	log.Debug("Data write to register success", "status", fmt.Sprintf("0x%02X", status[3]), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
+	return status[3], nil
 }
 
 // # 13.2.2 ReadRegister Function
@@ -119,14 +124,19 @@ func (d *Device) ReadRegister(address uint16, data []uint8) (uint8, error) {
 
 	rx := make([]uint8, len(commands))
 
-	if err := d.SPI.Tx(commands, rx); err != nil {
+	if err := d.Write(commands, rx); err != nil {
 		return 0, fmt.Errorf("Could not read data from register at address 0x%04X: %w", address, err)
 	}
 
-	status := rx[0]
+	status := rx[3]
 	copy(data, rx[4:])
 
-	log.Debug("Data read from register success", "address", fmt.Sprintf("0x%04X", address))
+	// log.Debug("SPI read raw",
+	// 	"tx", fmt.Sprintf("% X", commands),
+	// 	"rx", fmt.Sprintf("% X", rx),
+	// )
+
+	log.Debug("Data read from register success", "status", fmt.Sprintf("0x%02X", status), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
 	return status, nil
 }
 
@@ -138,7 +148,7 @@ func (d *Device) WriteBuffer(offset uint8, data []uint8) (uint8, error) {
 	commands := append([]uint8{uint8(CmdWriteBuffer), offset}, data...)
 	status := make([]uint8, len(commands))
 
-	if err := d.SPI.Tx(commands, status); err != nil {
+	if err := d.Write(commands, status); err != nil {
 		return 0, fmt.Errorf("Could not write data to buffer at offset 0x%02X: %w", offset, err)
 	}
 
@@ -157,7 +167,7 @@ func (d *Device) ReadBuffer(offset uint8, data []uint8) (uint8, error) {
 
 	rx := make([]uint8, len(commands))
 
-	if err := d.SPI.Tx(commands, rx); err != nil {
+	if err := d.Write(commands, rx); err != nil {
 		return 0, fmt.Errorf("Could not read data from bufferr at offset 0x%02X: %w", offset, err)
 	}
 
@@ -520,9 +530,9 @@ func (d *Device) PacketHT(headerType LoRaHeaderType) OptionsPacket {
 	}
 }
 
-func (d *Device) PacketPayLen(payloadLength uint8) OptionsPacket {
+func (d *Device) PacketPayLen(payloadLength int) OptionsPacket {
 	return func(cfg *ConfigPacket) {
-		cfg.PayloadLength = payloadLength
+		cfg.PayloadLength = uint8(payloadLength)
 	}
 }
 
@@ -763,4 +773,142 @@ func (d *Device) DequeueRx(timeout time.Duration) ([]uint8, error) {
 
 func (d *Device) WaitForIRQ(timeout time.Duration) bool {
 	return d.gpio.dio.WaitForEdge(timeout)
+}
+
+func (d *Device) handleIRQ() {
+	log := slog.With("func", "Device.handleIRQ()", "params", "(-)", "return", "(-)", "lib", "sx1262")
+	log.Debug("Handle SX126x IRQs")
+
+	irq, err := d.GetIrqStatus()
+	if err != nil {
+		log.Warn("Could not get SX126x IRQ status; possible hardware/SPI error", "error", err)
+		if err := d.ClearIrqStatus(IrqAll); err != nil {
+			log.Error("Could not clear SX126x IRQ status: ", "error", err)
+		}
+		return
+	}
+
+	if (irq & (uint16(IrqCrcErr) | uint16(IrqHeaderErr))) > 0 {
+		log.Warn("Damaged packet received; dropping it...")
+		if err := d.ClearIrqStatus(IrqAll); err != nil {
+			log.Error("Could not clear SX126x IRQ status: ", "error", err)
+		}
+		return
+	}
+
+	if (irq & uint16(IrqRxDone)) > 0 {
+		log.Debug("RX done")
+		status, err := d.GetRxBufferStatus()
+		if err != nil {
+			log.Error("Could not read SX126x RX buffer status; possible hardware/SPI error", "error", err)
+			if err := d.ClearIrqStatus(IrqAll); err != nil {
+				log.Warn("Could not clear SX126x IRQ status: ", "error", err)
+			}
+			return
+		}
+
+		payload := make([]uint8, status.RXPayloadLength)
+		_, err = d.ReadBuffer(status.RXStartPointer, payload)
+
+		if err != nil {
+			log.Warn("Could not read SX126x RX buffer; possible hardware/SPI error", "error", err)
+		} else if len(payload) > 0 {
+			log.Debug("SX126x data received")
+			select {
+			case d.Queue.Rx <- payload:
+			default:
+				log.Warn("RX channel queue is full")
+			}
+		}
+	}
+
+	if (irq & uint16(IrqTxDone)) > 0 {
+		log.Debug("TX done")
+		if d.gpio.txEn != nil {
+			if err := d.gpio.txEn.Out(gpio.Low); err != nil {
+				log.Error("Failed to set TxEn pin state to LOW", "error", err)
+			}
+		}
+		if d.gpio.rxEn != nil {
+			if err := d.gpio.rxEn.Out(gpio.High); err != nil {
+				log.Error("Failed to set RxEn pin state to HIGH", "error", err)
+			}
+		}
+
+		if err := d.SetRx(uint32(RxContinuous)); err != nil {
+			log.Error("Could not enable SX126x RX mode", "mode", RxContinuous, "error", err)
+		}
+	}
+
+	if err := d.ClearIrqStatus(IrqAll); err != nil {
+		log.Warn("Could not clear SX126x IRQ status: ", "error", err)
+	}
+}
+
+func (d *Device) dataTx(data []uint8, timeout uint32) {
+	log := slog.With("func", "Device.dataTx()", "params", "([]uint8, uint32)", "return", "(-)", "lib", "sx1262")
+	log.Debug("Transmit data")
+
+	if d.gpio.txEn != nil {
+		if err := d.gpio.txEn.Out(gpio.High); err != nil {
+			log.Error("Failed to set TxEn pin state to HIGH", "error", err)
+		}
+	}
+	if d.gpio.rxEn != nil {
+		if err := d.gpio.rxEn.Out(gpio.Low); err != nil {
+			log.Error("Failed to set RxEn pin state to LOW", "error", err)
+		}
+	}
+
+	stringToStandby := map[string]StandbyMode{
+		"rc":   StandbyRc,
+		"xosc": StandbyXosc,
+	}
+
+	standby, ok := stringToStandby[d.Config.StandbyMode]
+	if !ok {
+		standby = StandbyRc
+		log.Warn("Unknown standby mode", "mode", d.Config.StandbyMode)
+		log.Warn("Limiting standby mode to RC")
+	}
+
+	if err := d.SetStandby(standby); err != nil {
+		log.Error("Could not set SX126x stanby mode", "mode", standby, "error", err)
+		return
+	}
+
+	if err := d.SetPacketParams(d.PacketPayLen(len(data))); err != nil {
+		log.Error("Could not set SX126x payload length", "payloadLength", len(data), "error", err)
+		return
+	}
+
+	if _, err := d.WriteBuffer(d.Config.TxBufferAddress, data); err != nil {
+		log.Error("Could not write data to Tx buffer")
+		return
+	}
+
+	header := HeaderExplicit
+	if d.Config.LoRa.HeaderImplicit == true {
+		header = HeaderImplicit
+	}
+
+	crc := CrcOff
+	if d.Config.LoRa.CRC == true {
+		crc = CrcOn
+	}
+
+	iq := IqStandard
+	if d.Config.LoRa.InvertedIQ == true {
+		iq = IqInverted
+	}
+
+	if err := d.SetPacketParams(d.PacketLoRaConfig(d.Config.PreambleLength, header, uint8(len(data)), crc, iq)); err != nil {
+		log.Error("Could not set packet params")
+		return
+	}
+
+	if err := d.SetTx(timeout); err != nil {
+		log.Error("Failed to transmit data", "error", err)
+		return
+	}
 }

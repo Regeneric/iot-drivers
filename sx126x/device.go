@@ -125,6 +125,7 @@ const (
 	TxSingle     TxRxTimeout = 0x000000 // No timeout (Tx single mode)
 	RxSingle     TxRxTimeout = 0x000000 // No timeout (Rx single mode)
 	RxContinuous TxRxTimeout = 0xFFFFFF // Infinite (Rx continuous mode)
+	RxNoTimeout              = -1
 )
 
 type FallbackMode uint8

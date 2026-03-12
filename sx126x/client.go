@@ -1,9 +1,11 @@
 package sx126x
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"reflect"
+	"time"
 
 	"periph.io/x/conn/v3/gpio"
 	"periph.io/x/conn/v3/gpio/gpioreg"
@@ -30,6 +32,7 @@ func New(conn spi.Conn, cfg *Config) (*Device, error) {
 		if p == nil {
 			return nil, fmt.Errorf("Pin not found: %s", name)
 		}
+		log.Debug("Pin found", "pin", name)
 		return p, nil
 	}
 
@@ -47,6 +50,9 @@ func New(conn spi.Conn, cfg *Config) (*Device, error) {
 	}
 	if pins.txEn, err = loadPin(cfg.Pins.TxEn); err != nil {
 		return nil, err
+	}
+	if pins.rxEn, err = loadPin(cfg.Pins.RxEn); err != nil {
+		log.Warn(err.Error())
 	}
 	if cfg.Pins.CS != "" {
 		if pins.cs, err = loadPin(cfg.Pins.CS); err != nil {
@@ -95,10 +101,11 @@ func New(conn spi.Conn, cfg *Config) (*Device, error) {
 	}
 
 	return &Device{
-		SPI:    conn,
-		Config: cfg,
-		Queue:  queue,
-		gpio:   pins,
+		SPI:     conn,
+		Config:  cfg,
+		Queue:   queue,
+		gpio:    pins,
+		irqChan: make(chan struct{}),
 	}, nil
 }
 
@@ -121,4 +128,41 @@ func (d *Device) Close(sleepMode SleepConfig) error {
 	close(d.Queue.Tx)
 
 	return err
+}
+
+func (d *Device) Run(ctx context.Context) {
+	log := slog.With("func", "Device.Run()", "params", "(-)", "return", "(-)", "lib", "sx1262")
+	log.Info("SX126x modem event loop")
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if d.gpio.dio.WaitForEdge(1 * time.Second) {
+					log.Debug("IRQ!")
+					select {
+					case d.irqChan <- struct{}{}:
+					default:
+					}
+				}
+			}
+		}
+	}()
+
+	if err := d.SetRx(uint32(RxContinuous)); err != nil {
+		log.Error("Could not enable SX126x RX mode", "mode", RxContinuous, "error", err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-d.irqChan:
+			d.handleIRQ()
+		case data := <-d.Queue.Tx:
+			d.dataTx(data, uint32(TxSingle))
+		}
+	}
 }

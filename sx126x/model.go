@@ -129,9 +129,10 @@ type Bus interface {
 }
 
 type Device struct {
-	SPI    Bus
-	Config *Config
-	Status Status
-	Queue  Queue
-	gpio   *pinsDirection
+	SPI     Bus
+	Config  *Config
+	Status  Status
+	Queue   Queue
+	gpio    *pinsDirection
+	irqChan chan struct{}
 }
