@@ -36,8 +36,8 @@ func Setup(buses map[string]Bus, cfg *Group, logger Logger) (map[string]*Device,
 		logger = noplog{}
 	}
 
-	log := logger.With("func", "Setup()", "params", "(*cfg, map[string]Bus, Logger)", "return", "(map[string]*Device, func(), error)", "lib", "sgp30")
-	log.Info("[ SGP30 ] All sensors setup")
+	setupLog := logger.With("func", "Setup()", "params", "(*cfg, map[string]Bus, Logger)", "return", "(map[string]*Device, func(), error)", "lib", "sgp30")
+	setupLog.Info("[ SGP30 ] All sensors setup")
 
 	if cfg.Enable == false {
 		return nil, func() {}, errors.New("[ SGP30 ] All sensors disabled in the config file")
@@ -48,14 +48,14 @@ func Setup(buses map[string]Bus, cfg *Group, logger Logger) (map[string]*Device,
 
 	cleanup := func() {
 		for i, c := range closers {
-			log.Debug("[ SGP30 ] Closing SGP30 sensor and saving baseline values...", "sensor", i)
+			setupLog.Debug("[ SGP30 ] Closing SGP30 sensor and saving baseline values...", "sensor", i)
 			_ = c()
 		}
 	}
 
 	for key, dev := range cfg.Devices {
 		if dev.Enable == false {
-			log.Debug("[ SGP30 ] Sensor disabled in the config file;", "name [", dev.Name, "] bus [", dev.BusName, "] address [", Hex8(dev.Address), "]")
+			setupLog.Debug("[ SGP30 ] Sensor disabled in the config file;", "name [", dev.Name, "] bus [", dev.BusName, "] address [", Hex8(dev.Address), "]")
 			continue
 		}
 
@@ -65,7 +65,7 @@ func Setup(buses map[string]Bus, cfg *Group, logger Logger) (map[string]*Device,
 			return nil, func() {}, errors.New("[ SGP30 ] I2C bus '" + dev.BusName + "' not found for SGP30 sensor '" + dev.Name + "' with address [ " + Hex8(dev.Address) + " ]")
 		}
 
-		sensor, err := New(bus, &dev, WithLogger(log))
+		sensor, err := New(bus, &dev, WithLogger(logger))
 		if err != nil {
 			cleanup()
 			return nil, func() {}, err
@@ -98,7 +98,7 @@ func Setup(buses map[string]Bus, cfg *Group, logger Logger) (map[string]*Device,
 		})
 
 		sensors[key] = sensor
-		log.Debug("[ SGP30 ] Sensor configured and initilized;", "name [", dev.Name, "] bus [", dev.BusName, "] address [", Hex8(dev.Address), "]")
+		setupLog.Debug("[ SGP30 ] Sensor configured and initilized;", "name [", dev.Name, "] bus [", dev.BusName, "] address [", Hex8(dev.Address), "]")
 	}
 
 	return sensors, cleanup, nil
