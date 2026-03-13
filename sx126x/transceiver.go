@@ -90,7 +90,7 @@ func (d *Device) isr() {
 			}
 		}
 
-		if err := d.SetRx(uint32(RxContinuous)); err != nil {
+		if err := d.SetRx(int32(RxContinuous)); err != nil {
 			log.Error("Could not enable SX126x RX mode", "mode", RxContinuous, "error", err)
 		}
 	}
@@ -100,8 +100,8 @@ func (d *Device) isr() {
 	}
 }
 
-func (d *Device) transmit(data []uint8, timeout uint32) {
-	log := slog.With("func", "Device.transmit()", "params", "([]uint8, uint32)", "return", "(-)", "lib", "sx1262")
+func (d *Device) transmit(data []uint8, timeout int32) {
+	log := slog.With("func", "Device.transmit()", "params", "([]uint8, int32)", "return", "(-)", "lib", "sx1262")
 	log.Debug("Transmit data")
 
 	if d.gpio.txEn != nil {

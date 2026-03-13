@@ -2,7 +2,6 @@ package sgp30
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 )
@@ -358,7 +357,7 @@ func (d *Device) GetSerialId(data []uint8) error {
 func calculateCRC(data []uint8) (uint8, error) {
 	dataFrameLength := 2
 	if len(data) == 0 || len(data) > dataFrameLength {
-		return 0, fmt.Errorf("Data frame length invalid.\nExpected: [ %v ]\nGot:      [ %v ]", dataFrameLength, len(data))
+		return 0, errors.New("[ SGP30 ] Data frame length invalid.\n\rExpected: [ " + strconv.Itoa(dataFrameLength) + " ]\n\rGot:      [ " + strconv.Itoa(len(data)) + " ]")
 	}
 
 	var crc uint8 = uint8(CrcBase)  // 0b11111111
@@ -383,7 +382,7 @@ func calculateCRC(data []uint8) (uint8, error) {
 func validateCRC(data []uint8) error {
 	dataFrameLength := 3
 	if len(data) == 0 || len(data) > dataFrameLength {
-		return fmt.Errorf("Data frame length invalid.\nExpected: [ %v ]\nGot:      [ %v ]", dataFrameLength, len(data))
+		return errors.New("[ SGP30 ] Data frame length invalid.\n\rExpected: [ " + strconv.Itoa(dataFrameLength) + " ]\n\rGot:      [ " + strconv.Itoa(len(data)) + " ]")
 	}
 
 	crc, err := calculateCRC(data[0:2])
@@ -392,7 +391,7 @@ func validateCRC(data []uint8) error {
 	}
 
 	if crc != data[2] {
-		return fmt.Errorf("Checksum invalid.\nExpected: [%# x ]\nGot:      [%# x ]", data[2], crc)
+		return errors.New("Checksum invalid\n\rExpected: [ " + Hex8(data[2]) + " ]\n\rGot:      " + Hex8(crc))
 	}
 
 	return nil

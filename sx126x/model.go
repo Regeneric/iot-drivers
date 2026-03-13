@@ -128,6 +128,36 @@ type Bus interface {
 	Tx(w, r []uint8) error
 }
 
+type Logger interface {
+	With(kv ...any) Logger
+	Debug(msg string, kv ...any)
+	Info(msg string, kv ...any)
+	Warn(msg string, kv ...any)
+	Error(msg string, kv ...any)
+}
+
+type noplog struct{}
+
+func (n noplog) With(kv ...any) Logger       { return n }
+func (n noplog) Debug(msg string, kv ...any) {}
+func (n noplog) Info(msg string, kv ...any)  {}
+func (n noplog) Warn(msg string, kv ...any)  {}
+func (n noplog) Error(msg string, kv ...any) {}
+
+type Option func(*Device)
+
+type Frequency uint32
+
+const (
+	Hertz     Frequency = 1
+	KiloHertz Frequency = 1000 * Hertz
+	MegaHertz Frequency = 1000 * KiloHertz
+)
+
+func (f Frequency) Uint32() uint32 {
+	return uint32(f)
+}
+
 type Device struct {
 	SPI     Bus
 	Config  *Config
@@ -135,4 +165,5 @@ type Device struct {
 	Queue   Queue
 	gpio    *pinsDirection
 	irqChan chan struct{}
+	log     Logger
 }

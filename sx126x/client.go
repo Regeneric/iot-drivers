@@ -2,8 +2,7 @@ package sx126x
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
+	"errors"
 	"reflect"
 	"time"
 
@@ -12,27 +11,42 @@ import (
 	"periph.io/x/conn/v3/spi"
 )
 
-func New(conn spi.Conn, cfg *Config) (*Device, error) {
-	log := slog.With("func", "New()", "params", "(spi.Conn, *Config)", "return", "(*Device, error)", "lib", "sx1262")
-	log.Info("Initializing SX126x module")
-
+func New(conn spi.Conn, cfg *Config, opts ...Option) (*Device, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("SX126x modem state improper; cfg is nil")
+		return nil, errors.New("[ SX126X ] Modem state improper; cfg is nil")
 	}
 	if conn == nil || reflect.ValueOf(conn).IsNil() {
-		return nil, fmt.Errorf("SPI bus connection state improper")
+		return nil, errors.New("[ SX126X ] SPI bus connection state improper")
 	}
 
 	if cfg.Enable == false {
-		return nil, fmt.Errorf("SX126x modem disabled in the config")
+		return nil, errors.New("[ SX126X ] Modem disabled in the config")
 	}
+
+	// Empty, explicit init so I will always remember to populate them
+	dev := &Device{
+		SPI:     conn,
+		Config:  cfg,
+		Status:  Status{},
+		Queue:   Queue{},
+		gpio:    &pinsDirection{},
+		irqChan: make(chan struct{}),
+		log:     noplog{},
+	}
+
+	for _, opt := range opts {
+		opt(dev)
+	}
+
+	log := dev.log.With("func", "New()", "params", "(spi.Conn, *Config, ...Option)", "return", "(*Device, error)", "lib", "sx1262")
+	log.Info("[ SX126X ] Initializing module")
 
 	loadPin := func(name string) (gpio.PinIO, error) {
 		p := gpioreg.ByName(name)
 		if p == nil {
-			return nil, fmt.Errorf("Pin not found")
+			return nil, errors.New("[ SX126X ] Pin not found")
 		}
-		log.Debug("Pin found", "pin", name)
+		log.Debug("[ SX126X ] Pin found", "pin", name)
 		return p, nil
 	}
 
@@ -61,66 +75,62 @@ func New(conn spi.Conn, cfg *Config) (*Device, error) {
 	}
 
 	if err := pins.reset.Out(gpio.High); err != nil {
-		return nil, fmt.Errorf("Failed to set RESET pin state to HIGH: %w", err)
+		return nil, errors.New("[ SX126X ] Failed to set RESET pin state to HIGH: " + err.Error())
 	}
 	if err := pins.busy.In(gpio.PullNoChange, gpio.NoEdge); err != nil {
-		return nil, fmt.Errorf("Failed to set BUSY pin edge detection: %w", err)
+		return nil, errors.New("[ SX126X ] Failed to set BUSY pin edge detection: " + err.Error())
 	}
 	if err := pins.dio.In(gpio.PullDown, gpio.RisingEdge); err != nil {
-		return nil, fmt.Errorf("Failed to set DIO1 pin pull down and edge detection: %w", err)
+		return nil, errors.New("[ SX126X ] Failed to set DIO1 pin pull down and edge detection: " + err.Error())
 	}
 	if pins.txEn != nil {
 		if err := pins.txEn.Out(gpio.Low); err != nil {
-			return nil, fmt.Errorf("Failed to set TxEn pin state to LOW: %w", err)
+			return nil, errors.New("[ SX126X ] Failed to set TxEn pin state to LOW: " + err.Error())
 		}
 	}
 	if pins.rxEn != nil {
 		if err := pins.rxEn.Out(gpio.Low); err != nil {
-			return nil, fmt.Errorf("Failed to set RxEn pin state to LOW: %w", err)
+			return nil, errors.New("[ SX126X ] Failed to set RxEn pin state to LOW: " + err.Error())
 		}
 	}
 	if pins.cs != nil {
 		if err := pins.cs.Out(gpio.High); err != nil {
-			return nil, fmt.Errorf("Failed to set CS pin state to HIGH: %w", err)
+			return nil, errors.New("[ SX126X ] Failed to set CS pin state to HIGH: " + err.Error())
 		}
 	}
+	dev.gpio = pins
 
 	if cfg.RxQueueSize <= 0 {
 		cfg.RxQueueSize = 10
-		log.Warn("RX queue size cannot be less than 1; resized to 10", "size", cfg.RxQueueSize)
+		log.Warn("[ SX126X ] RX queue size cannot be less than 1; resized to 10", "size", cfg.RxQueueSize)
 	}
 
 	if cfg.TxQueueSize <= 0 {
 		cfg.TxQueueSize = 10
-		log.Warn("TX queue size cannot be less than 1; resized to 10", "size", cfg.TxQueueSize)
+		log.Warn("[ SX126X ] TX queue size cannot be less than 1; resized to 10", "size", cfg.TxQueueSize)
 	}
 
 	queue := Queue{
 		Rx: make(chan []uint8, cfg.RxQueueSize),
 		Tx: make(chan []uint8, cfg.TxQueueSize),
 	}
+	dev.Queue = queue
 
-	return &Device{
-		SPI:     conn,
-		Config:  cfg,
-		Queue:   queue,
-		gpio:    pins,
-		irqChan: make(chan struct{}),
-	}, nil
+	return dev, nil
 }
 
 func (d *Device) Close(sleepMode SleepConfig) error {
-	log := slog.With("func", "Device.Close()", "params", "(SleepConfig)", "return", "(error)", "lib", "sx1262")
-	log.Info("Closing SX126x module", "mode", sleepMode)
+	log := d.log.With("func", "Device.Close()", "params", "(SleepConfig)", "return", "(error)", "lib", "sx1262")
+	log.Info("[ SX126X ] Closing module", "mode", sleepMode)
 
 	var err error = nil
 	if err = d.SetSleep(sleepMode); err != nil {
-		log.Error("Could not set sleep mode", "mode", sleepMode, "error", err)
+		log.Error("[ SX126X ] Could not set sleep mode", "mode", sleepMode, "error", err)
 	}
 
 	if d.gpio.txEn != nil {
 		if err = d.gpio.txEn.Out(gpio.Low); err != nil {
-			log.Error("Could not set TxEn pin to LOW", "error", err)
+			log.Error("[ SX126X ] Could not set TxEn pin to LOW", "error", err)
 		}
 	}
 
@@ -131,8 +141,8 @@ func (d *Device) Close(sleepMode SleepConfig) error {
 }
 
 func (d *Device) Run(ctx context.Context) error {
-	log := slog.With("func", "Device.Run()", "params", "(context.Context)", "return", "(-)", "lib", "sx1262")
-	log.Info("SX126x modem event loop")
+	log := d.log.With("func", "Device.Run()", "params", "(context.Context)", "return", "(-)", "lib", "sx1262")
+	log.Info("[ SX126X ] Modem event loop")
 
 	go func() {
 		defer close(d.irqChan)
@@ -152,8 +162,8 @@ func (d *Device) Run(ctx context.Context) error {
 		}
 	}()
 
-	if err := d.SetRx(uint32(RxContinuous)); err != nil {
-		log.Error("Could not enable SX126x RX mode", "mode", RxContinuous, "error", err)
+	if err := d.SetRx(int32(RxContinuous)); err != nil {
+		log.Error("[ SX126X ] Could not enable module RX mode", "mode", RxContinuous, "error", err)
 	}
 
 	for {
@@ -163,7 +173,7 @@ func (d *Device) Run(ctx context.Context) error {
 		case <-d.irqChan:
 			d.isr() // Interrupt Service Routine
 		case data := <-d.Queue.Tx:
-			d.transmit(data, uint32(TxSingle))
+			d.transmit(data, int32(TxSingle))
 		}
 	}
 }
