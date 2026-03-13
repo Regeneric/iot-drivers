@@ -9,7 +9,7 @@ import (
 	"periph.io/x/conn/v3/physic"
 )
 
-func (d *Device) WithLogger(log Logger) Option {
+func WithLogger(log Logger) Option {
 	return func(d *Device) {
 		if log != nil {
 			d.log = log
