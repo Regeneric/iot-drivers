@@ -8,7 +8,7 @@ import (
 )
 
 func (d *Device) IaqInit() error {
-	log := d.log.With("[ SGP30 ] func", "Device.IaqInit()", "params", "(-)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.IaqInit()", "params", "(-)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Sensor IAQ init;", "sensor", d.Config.Name)
 
 	command := []uint8{uint8(CmdIaqInitMSB), uint8(CmdIaqInitLSB)}
@@ -24,7 +24,7 @@ func (d *Device) IaqInit() error {
 }
 
 func (d *Device) MeasureIaq(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.MeasureIaq()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.MeasureIaq()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Measure eCO2 and TVOC values;", "sensor", d.Config.Name)
 
 	dataFrameLength := 6
@@ -59,7 +59,7 @@ func (d *Device) MeasureIaq(data []uint8) error {
 
 // 6 bytes: (eCO2_MSB, eCO2_LSB, eCO2_CRC, TVOC_MSB, TVOC_LSB, TVOC_CRC)
 func (d *Device) GetIaqBaseline(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.GetIaqBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.GetIaqBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Get IAQ baseline calibration value;", "sensor", d.Config.Name)
 
 	dataFrameLength := 6
@@ -94,7 +94,7 @@ func (d *Device) GetIaqBaseline(data []uint8) error {
 
 // 6 bytes: (eCO2_MSB, eCO2_LSB, eCO2_CRC, TVOC_MSB, TVOC_LSB, TVOC_CRC)
 func (d *Device) SetIaqBaseline(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.SetIaqBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.SetIaqBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Set IAQ baseline calibration value", "sensor", d.Config.Name)
 
 	dataFrameLength := 6
@@ -123,7 +123,7 @@ func (d *Device) SetIaqBaseline(data []uint8) error {
 }
 
 func (d *Device) SetAbsoluteHumidity(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.SetAbsoluteHumidity()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.SetAbsoluteHumidity()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Set absolute humidity calibration value;", "sensor", d.Config.Name)
 
 	dataFrameLength := 3
@@ -150,7 +150,7 @@ func (d *Device) SetAbsoluteHumidity(data []uint8) error {
 
 // Page 10 Measure Test
 func (d *Device) MeasureTest(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.MeasureTest()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.MeasureTest()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Sensor self-test;", "sensor", d.Config.Name)
 
 	dataFrameLength := 3
@@ -184,7 +184,7 @@ func (d *Device) MeasureTest(data []uint8) error {
 }
 
 func (d *Device) GetFeatureSet(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.GetFeatureSet()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.GetFeatureSet()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Get feature set;", "sensor", d.Config.Name)
 
 	dataFrameLength := 3
@@ -218,7 +218,7 @@ func (d *Device) GetFeatureSet(data []uint8) error {
 }
 
 func (d *Device) MeasureRaw(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.MeasureRaw()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.MeasureRaw()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Measure raw sensor values;", "sensor", d.Config.Name)
 
 	dataFrameLength := 6
@@ -250,7 +250,7 @@ func (d *Device) MeasureRaw(data []uint8) error {
 }
 
 func (d *Device) GetTvocInceptiveBaseline(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.GetTvocInceptiveBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.GetTvocInceptiveBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Inceptive baseline sensor values;", "sensor", d.Config.Name)
 
 	dataFrameLength := 3
@@ -279,7 +279,7 @@ func (d *Device) GetTvocInceptiveBaseline(data []uint8) error {
 }
 
 func (d *Device) SetTvocBaseline(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.SetTvocBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.SetTvocBaseline()", "params", "([]uint8)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Set TVOC baseline calibration value;", "sensor", d.Config.Name)
 
 	dataFrameLength := 2
@@ -308,7 +308,7 @@ func (d *Device) SetTvocBaseline(data []uint8) error {
 }
 
 func (d *Device) SoftReset() error {
-	log := d.log.With("[ SGP30 ] func", "Device.SoftReset()", "params", "(-)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.SoftReset()", "params", "(-)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Sensor soft reset;", "sensor", d.Config.Name)
 
 	if err := d.I2C.Tx(uint16(CmdSoftResetMSB), []uint8{uint8(CmdSoftResetLSB)}, nil); err != nil {
@@ -320,7 +320,7 @@ func (d *Device) SoftReset() error {
 }
 
 func (d *Device) GetSerialId(data []uint8) error {
-	log := d.log.With("[ SGP30 ] func", "Device.GetSerialId()", "params", "(-)", "return", "(error)", "lib", "sgp30")
+	log := d.log.With("func", "Device.GetSerialId()", "params", "(-)", "return", "(error)", "lib", "sgp30")
 	log.Debug("[ SGP30 ] Get sensor serial ID;", "sensor", d.Config.Name)
 
 	dataFrameLength := 9

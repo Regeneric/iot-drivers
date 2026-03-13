@@ -65,7 +65,7 @@ func Setup(buses map[string]Bus, cfg *Group, logger Logger) (map[string]*Device,
 			return nil, func() {}, errors.New("[ SGP30 ] I2C bus '" + dev.BusName + "' not found for SGP30 sensor '" + dev.Name + "' with address [ " + Hex8(dev.Address) + " ]")
 		}
 
-		sensor, err := New(bus, &dev, WithLogger(logger))
+		sensor, err := New(bus, &dev, WithLogger(log))
 		if err != nil {
 			cleanup()
 			return nil, func() {}, err
