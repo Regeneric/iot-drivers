@@ -31,7 +31,7 @@ func (d *Device) WaitForIRQ(timeout time.Duration) bool {
 
 func (d *Device) isr() {
 	log := d.log.With("func", "Device.isr()", "params", "(-)", "return", "(-)", "lib", "sx1262")
-	log.Debug("Handle SX126x IRQs")
+	log.Debug("[ SX126X ] Handle SX126x IRQs")
 
 	irq, err := d.GetIrqStatus()
 	if err != nil {
@@ -51,7 +51,7 @@ func (d *Device) isr() {
 	}
 
 	if (irq & uint16(IrqRxDone)) > 0 {
-		log.Debug("RX done")
+		log.Debug("[ SX126X ] RX done")
 		status, err := d.GetRxBufferStatus()
 		if err != nil {
 			log.Error("Could not read SX126x RX buffer status; possible hardware/SPI error", "error", err)
@@ -67,7 +67,7 @@ func (d *Device) isr() {
 		if err != nil {
 			log.Warn("Could not read SX126x RX buffer; possible hardware/SPI error", "error", err)
 		} else if len(payload) > 0 {
-			log.Debug("SX126x data received")
+			log.Debug("[ SX126X ] SX126x data received")
 			select {
 			case d.Queue.Rx <- payload:
 			default:
@@ -77,7 +77,7 @@ func (d *Device) isr() {
 	}
 
 	if (irq & uint16(IrqTxDone)) > 0 {
-		log.Debug("TX done")
+		log.Debug("[ SX126X ] TX done")
 		if d.gpio.txEn != nil {
 			if err := d.gpio.txEn.Out(gpio.Low); err != nil {
 				log.Error("Failed to set TxEn pin state to LOW", "error", err)
@@ -101,7 +101,7 @@ func (d *Device) isr() {
 
 func (d *Device) transmit(data []uint8, timeout int32) {
 	log := d.log.With("func", "Device.transmit()", "params", "([]uint8, int32)", "return", "(-)", "lib", "sx1262")
-	log.Debug("Transmit data")
+	log.Debug("[ SX126X ] Transmit data")
 
 	if d.gpio.txEn != nil {
 		if err := d.gpio.txEn.Out(gpio.High); err != nil {

@@ -28,12 +28,12 @@ func Hex16(w uint16) string {
 
 func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) error {
 	log := d.log.With("func", "Device.BusyCheck()", "params", "(<-chan time.Time, ...time.Duration)", "return", "(error)", "lib", "sx126x")
-	log.Debug("Check SX126x module busy status")
+	log.Debug("[ SX126X ] Check SX126x module busy status")
 
 	interval := 10 * time.Millisecond
 	if len(sleep) > 0 {
 		interval = sleep[0]
-		log.Debug("Sleep interval changed", "interval", interval)
+		log.Debug("[ SX126X ] Sleep interval changed", "interval", interval)
 	}
 
 	for {
@@ -42,7 +42,7 @@ func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) err
 			return fmt.Errorf("Timeout!")
 		default:
 			if d.gpio.busy.Read() == gpio.Low {
-				log.Debug("SX126x modem ready")
+				log.Debug("[ SX126X ] SX126x modem ready")
 				return nil
 			}
 			time.Sleep(interval) // Avoids busy wait in loop
@@ -52,7 +52,7 @@ func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) err
 
 func (d *Device) HardReset(timeout ...<-chan time.Time) error {
 	log := d.log.With("func", "Device.HardReset()", "params", "(-)", "return", "(error)", "lib", "sx126x")
-	log.Debug("SX126x hard reset")
+	log.Debug("[ SX126X ] SX126x hard reset")
 
 	if err := d.gpio.cs.Out(gpio.High); err != nil {
 		return fmt.Errorf("Failed to set CS pin state to HIGH: %w", err)
@@ -74,13 +74,13 @@ func (d *Device) HardReset(timeout ...<-chan time.Time) error {
 		return fmt.Errorf("Failed to reset SX126x modem: %w", err)
 	}
 
-	log.Info("SX126x modem hard reset success")
+	log.Info("[ SX126X ] Modem hard reset success")
 	return nil
 }
 
 func (d *Device) Write(w []uint8, r []uint8, timeout ...<-chan time.Time) error {
 	log := d.log.With("func", "Device.Write()", "params", "([]uint8, []uint8, ...<-chan time.Time)", "return", "(error)", "lib", "sx126x")
-	log.Debug("Send data to SX126x modem")
+	log.Debug("[ SX126X ] Send data to SX126x modem")
 
 	wait := time.After(1 * time.Second)
 	if len(timeout) > 0 {
@@ -106,7 +106,7 @@ func (d *Device) Write(w []uint8, r []uint8, timeout ...<-chan time.Time) error 
 // # 13.2.1 WriteRegister Function
 func (d *Device) WriteRegister(address uint16, data []uint8) (uint8, error) {
 	log := d.log.With("func", "Device.WriteRegister()", "params", "(uint16, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
-	log.Debug("Allow writing a block of bytes in a data memory space starting at a specific address.")
+	log.Debug("[ SX126X ] Allow writing a block of bytes in a data memory space starting at a specific address.")
 
 	commands := append([]uint8{
 		uint8(CmdWriteRegister),
@@ -119,19 +119,19 @@ func (d *Device) WriteRegister(address uint16, data []uint8) (uint8, error) {
 		return 0, fmt.Errorf("Could not write data to register at address 0x%04X: %w", address, err)
 	}
 
-	// log.Debug("SPI write raw",
+	// log.Debug("[ SX126X ] SPI write raw",
 	// 	"tx", fmt.Sprintf("% X", commands),
 	// 	"rx", fmt.Sprintf("% X", status),
 	// )
 
-	log.Debug("Data write to register success", "status", fmt.Sprintf("0x%02X", status[3]), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
+	log.Debug("[ SX126X ] Data write to register success", "status", fmt.Sprintf("0x%02X", status[3]), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
 	return status[3], nil
 }
 
 // # 13.2.2 ReadRegister Function
 func (d *Device) ReadRegister(address uint16, data []uint8) (uint8, error) {
 	log := d.log.With("func", "Device.ReadRegister()", "params", "(uint16, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
-	log.Debug("Allow reading a block of data starting at a given address.")
+	log.Debug("[ SX126X ] Allow reading a block of data starting at a given address.")
 
 	commands := make([]uint8, len(data)+4) // OPCODE + ADDRESS_MSB + ADDRESS_LSB + NOP + LEN(DATA)
 	commands[0] = uint8(CmdReadRegister)
@@ -148,19 +148,19 @@ func (d *Device) ReadRegister(address uint16, data []uint8) (uint8, error) {
 	status := rx[3]
 	copy(data, rx[4:])
 
-	// log.Debug("SPI read raw",
+	// log.Debug("[ SX126X ] SPI read raw",
 	// 	"tx", fmt.Sprintf("% X", commands),
 	// 	"rx", fmt.Sprintf("% X", rx),
 	// )
 
-	log.Debug("Data read from register success", "status", fmt.Sprintf("0x%02X", status), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
+	log.Debug("[ SX126X ] Data read from register success", "status", fmt.Sprintf("0x%02X", status), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
 	return status, nil
 }
 
 // # 13.2.3 WriteBuffer Function
 func (d *Device) WriteBuffer(offset uint8, data []uint8) (uint8, error) {
 	log := d.log.With("func", "Device.WriteBuffer()", "params", "(uint8, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
-	log.Debug("Store data payload to be transmitted.")
+	log.Debug("[ SX126X ] Store data payload to be transmitted.")
 
 	commands := append([]uint8{uint8(CmdWriteBuffer), offset}, data...)
 	status := make([]uint8, len(commands))
@@ -169,14 +169,14 @@ func (d *Device) WriteBuffer(offset uint8, data []uint8) (uint8, error) {
 		return 0, fmt.Errorf("Could not write data to buffer at offset 0x%02X: %w", offset, err)
 	}
 
-	log.Debug("Data write to register success", "address", fmt.Sprintf("0x%02X", offset))
+	log.Debug("[ SX126X ] Data write to register success", "address", fmt.Sprintf("0x%02X", offset))
 	return status[0], nil
 }
 
 // # 13.2.4 ReadBuffer Function
 func (d *Device) ReadBuffer(offset uint8, data []uint8) (uint8, error) {
 	log := d.log.With("func", "Device.ReadBuffer()", "params", "(uint8, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
-	log.Debug("Read bytes of payload received starting at offset")
+	log.Debug("[ SX126X ] Read bytes of payload received starting at offset")
 
 	commands := make([]uint8, len(data)+3)
 	commands[0] = uint8(CmdReadBuffer)
@@ -191,7 +191,7 @@ func (d *Device) ReadBuffer(offset uint8, data []uint8) (uint8, error) {
 	status := rx[0]
 	copy(data, rx[3:])
 
-	log.Debug("Data read from register success", "address", fmt.Sprintf("0x%02X", offset))
+	log.Debug("[ SX126X ] Data read from register success", "address", fmt.Sprintf("0x%02X", offset))
 	return status, nil
 }
 
