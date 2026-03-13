@@ -8,7 +8,7 @@ import (
 )
 
 func New(i2c Bus, cfg *Config) (*Device, error) {
-	log := slog.With("func", "New()", "params", "(Bus, *cfg)", "return", "(*Device, error)", "package", "sgp30")
+	log := slog.With("func", "New()", "params", "(Bus, *cfg)", "return", "(*Device, error)", "lib", "sgp30")
 	log.Info("SGP30 single sensor constructor", "name", cfg.Name)
 
 	if cfg == nil {
@@ -26,7 +26,7 @@ func New(i2c Bus, cfg *Config) (*Device, error) {
 
 // TODO full initilization path with optional settings
 func Setup(buses map[string]Bus, cfg *Group) (map[string]*Device, func(), error) {
-	log := slog.With("func", "Setup()", "params", "(*cfg, map[string]Bus)", "return", "(map[string]*Device, func(), error)", "package", "sgp30")
+	log := slog.With("func", "Setup()", "params", "(*cfg, map[string]Bus)", "return", "(map[string]*Device, func(), error)", "lib", "sgp30")
 	log.Info("SGP30 sensors setup")
 
 	if cfg.Enable == false {
@@ -63,7 +63,14 @@ func Setup(buses map[string]Bus, cfg *Group) (map[string]*Device, func(), error)
 
 		if err := sensor.IaqInit(); err != nil {
 			cleanup()
-			return nil, func() {}, fmt.Errorf("SGP30 sensors '%s' on bus '%s' and address '[%#x]' unresponsive: %w", dev.Name, dev.BusName, dev.Address, err)
+			return nil, func() {}, fmt.Errorf("SGP30 sensor '%s' on bus '%s' and address '[%#x]' unresponsive: %w", dev.Name, dev.BusName, dev.Address, err)
+		}
+
+		// temporary
+		baseline := []uint8{0xA1, 0xAF, 0x58, 0xA5, 0x2A, 0x54}
+		if err := sensor.SetIaqBaseline(baseline); err != nil {
+			cleanup()
+			return nil, func() {}, fmt.Errorf("SGP30 sensor '%s' on bus '%s' and address '[%#x]' unresponsive: %w", dev.Name, dev.BusName, dev.Address, err)
 		}
 
 		closers = append(closers, func() error {

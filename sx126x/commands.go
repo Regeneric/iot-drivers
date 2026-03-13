@@ -336,7 +336,7 @@ func (d *Device) SetRxTxFallbackMode(mode FallbackMode) error {
 
 // # 13.3.1 SetDioIrqParams
 func (d *Device) SetDioIrqParams(irqMask IrqMask, dioIRQ ...IrqMask) error {
-	log := slog.With("func", "Device.SetDioIrqParams()", "params", "(uint16, ...uint16)", "return", "(error)", "lib", "sx126x")
+	log := slog.With("func", "Device.SetDioIrqParams()", "params", "(IrqMask, ...IrqMask)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Mask or unmask the IRQ which can be triggered by the device")
 
 	switch d.Config.Modem {
@@ -427,7 +427,7 @@ func (d *Device) GetIrqStatus() (uint16, error) {
 
 // # 13.3.4 ClearIrqStatus
 func (d *Device) ClearIrqStatus(mask IrqMask) error {
-	log := slog.With("func", "Device.ClearIrqStatus()", "params", "(uint16)", "return", "(error)", "lib", "sx126x")
+	log := slog.With("func", "Device.ClearIrqStatus()", "params", "(IrqMask)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Clear IRQ register mask")
 
 	// IrqAll would trigger the warning, but it's a nice shorthand mask
@@ -564,7 +564,7 @@ func (d *Device) GetPacketType() (uint8, error) {
 
 // # 13.4.4 SetTxParams
 func (d *Device) SetTxParams(dbm int8, rampTime RampTime) error {
-	log := slog.With("func", "Device.GetPacketType()", "params", "(-)", "return", "(uint8, error)", "lib", "sx126x")
+	log := slog.With("func", "Device.GetPacketType()", "params", "(int8, RampTime)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Set TX output power")
 
 	commands := []uint8{uint8(CmdSetTxParams), uint8(dbm), uint8(rampTime)}

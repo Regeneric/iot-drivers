@@ -1,5 +1,6 @@
 package sgp30
 
+//go:generate stringer -type=Command,CRC,Measure -output=sgp30_strings.go
 type Command uint16
 
 const (

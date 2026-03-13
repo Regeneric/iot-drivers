@@ -18,7 +18,7 @@ func (d *Device) IaqInit() error {
 	// Table 10 Measurement commands
 	time.Sleep(10 * time.Millisecond)
 
-	log.Info("Init command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdIaqInit)
+	log.Info("Init command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdIaqInit)
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (d *Device) MeasureIaq(data []uint8) error {
 		return fmt.Errorf("TVOC CRC validation error: %w", err)
 	}
 
-	log.Info("Measure command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdMeasureIaq)
+	log.Info("Measure command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdMeasureIaq)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (d *Device) GetIaqBaseline(data []uint8) error {
 		return fmt.Errorf("TVOC CRC validation error: %w", err)
 	}
 
-	log.Info("Get IAQ baseline command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdGetIaqBaseline)
+	log.Info("Get IAQ baseline command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdGetIaqBaseline)
 	return nil
 }
 
@@ -117,7 +117,7 @@ func (d *Device) SetIaqBaseline(data []uint8) error {
 	// Table 10 Measurement commands
 	time.Sleep(10 * time.Millisecond)
 
-	log.Info("IAQ set baseline command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSetIaqBaseline)
+	log.Info("IAQ set baseline command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdSetIaqBaseline)
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (d *Device) SetAbsoluteHumidity(data []uint8) error {
 	// Table 10 Measurement commands
 	time.Sleep(10 * time.Millisecond)
 
-	log.Info("Absolute humidity calibration command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSetAbsoluteHumidity)
+	log.Info("Absolute humidity calibration command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdSetAbsoluteHumidity)
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (d *Device) MeasureTest(data []uint8) error {
 		return fmt.Errorf("CRC validation error: %w", err)
 	}
 
-	log.Info("Measure test command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdMeasureTest)
+	log.Info("Measure test command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdMeasureTest)
 	return nil
 }
 
@@ -212,7 +212,7 @@ func (d *Device) GetFeatureSet(data []uint8) error {
 		return fmt.Errorf("CRC validation error: %w", err)
 	}
 
-	log.Info("Feature set command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdGetFeatureSet)
+	log.Info("Feature set command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdGetFeatureSet)
 	return nil
 }
 
@@ -244,7 +244,7 @@ func (d *Device) MeasureRaw(data []uint8) error {
 		return fmt.Errorf("C2H6O CRC validation error: %w", err)
 	}
 
-	log.Info("Measure raw values command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdMeasureRaw)
+	log.Info("Measure raw values command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdMeasureRaw)
 	return nil
 }
 
@@ -273,7 +273,7 @@ func (d *Device) GetTvocInceptiveBaseline(data []uint8) error {
 		return fmt.Errorf("CRC validation error: %w", err)
 	}
 
-	log.Info("Inceptive baseline set command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdGetTvocInceptiveBaseline)
+	log.Info("Inceptive baseline set command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdGetTvocInceptiveBaseline)
 	return nil
 }
 
@@ -302,7 +302,7 @@ func (d *Device) SetTvocBaseline(data []uint8) error {
 	// Table 10 Measurement commands
 	time.Sleep(10 * time.Millisecond)
 
-	log.Info("TVOC baseline calibration command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSetTvocBaseline)
+	log.Info("TVOC baseline calibration command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdSetTvocBaseline)
 	return nil
 }
 
@@ -314,7 +314,7 @@ func (d *Device) SoftReset() error {
 		return fmt.Errorf("Could not send soft reset command to SGP30 sensor: %w", err)
 	}
 
-	log.Info("Soft reset command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdSoftReset)
+	log.Info("Soft reset command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdSoftReset)
 	return nil
 }
 
@@ -349,7 +349,7 @@ func (d *Device) GetSerialId(data []uint8) error {
 		return fmt.Errorf("CRC validation error: %w", err)
 	}
 
-	log.Info("Get serial ID command send to sensor", "i2c", d.I2C.String(), "address", d.Config.Address, "command", CmdGetSerialId)
+	log.Info("Get serial ID command send to sensor", "i2c", d.I2C.String(), "address", fmt.Sprintf("[%#x]", d.Config.Address), "command", CmdGetSerialId)
 	return nil
 }
 

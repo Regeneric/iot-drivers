@@ -30,7 +30,7 @@ func New(conn spi.Conn, cfg *Config) (*Device, error) {
 	loadPin := func(name string) (gpio.PinIO, error) {
 		p := gpioreg.ByName(name)
 		if p == nil {
-			return nil, fmt.Errorf("Pin not found: %s", name)
+			return nil, fmt.Errorf("Pin not found")
 		}
 		log.Debug("Pin found", "pin", name)
 		return p, nil
@@ -110,7 +110,7 @@ func New(conn spi.Conn, cfg *Config) (*Device, error) {
 }
 
 func (d *Device) Close(sleepMode SleepConfig) error {
-	log := slog.With("func", "Device.Close()", "params", "(-)", "return", "(error)", "lib", "sx1262")
+	log := slog.With("func", "Device.Close()", "params", "(SleepConfig)", "return", "(error)", "lib", "sx1262")
 	log.Info("Closing SX126x module", "mode", sleepMode)
 
 	var err error = nil
@@ -130,17 +130,18 @@ func (d *Device) Close(sleepMode SleepConfig) error {
 	return err
 }
 
-func (d *Device) Run(ctx context.Context) {
-	log := slog.With("func", "Device.Run()", "params", "(-)", "return", "(-)", "lib", "sx1262")
+func (d *Device) Run(ctx context.Context) error {
+	log := slog.With("func", "Device.Run()", "params", "(context.Context)", "return", "(-)", "lib", "sx1262")
 	log.Info("SX126x modem event loop")
 
 	go func() {
+		defer close(d.irqChan)
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				if d.gpio.dio.WaitForEdge(1 * time.Second) {
+				if d.WaitForIRQ(1 * time.Second) {
 					log.Debug("IRQ!")
 					select {
 					case d.irqChan <- struct{}{}:
@@ -158,11 +159,11 @@ func (d *Device) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		case <-d.irqChan:
-			d.handleIRQ()
+			d.isr() // Interrupt Service Routine
 		case data := <-d.Queue.Tx:
-			d.dataTx(data, uint32(TxSingle))
+			d.transmit(data, uint32(TxSingle))
 		}
 	}
 }
