@@ -2,7 +2,6 @@ package sx126x
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	"periph.io/x/conn/v3/gpio"
@@ -31,7 +30,7 @@ func (d *Device) WaitForIRQ(timeout time.Duration) bool {
 }
 
 func (d *Device) isr() {
-	log := slog.With("func", "Device.isr()", "params", "(-)", "return", "(-)", "lib", "sx1262")
+	log := d.log.With("func", "Device.isr()", "params", "(-)", "return", "(-)", "lib", "sx1262")
 	log.Debug("Handle SX126x IRQs")
 
 	irq, err := d.GetIrqStatus()
@@ -101,7 +100,7 @@ func (d *Device) isr() {
 }
 
 func (d *Device) transmit(data []uint8, timeout int32) {
-	log := slog.With("func", "Device.transmit()", "params", "([]uint8, int32)", "return", "(-)", "lib", "sx1262")
+	log := d.log.With("func", "Device.transmit()", "params", "([]uint8, int32)", "return", "(-)", "lib", "sx1262")
 	log.Debug("Transmit data")
 
 	if d.gpio.txEn != nil {

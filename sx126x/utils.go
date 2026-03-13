@@ -2,7 +2,6 @@ package sx126x
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	"periph.io/x/conn/v3/gpio"
@@ -28,7 +27,7 @@ func Hex16(w uint16) string {
 }
 
 func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) error {
-	log := slog.With("func", "Device.BusyCheck()", "params", "(<-chan time.Time, ...time.Duration)", "return", "(error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.BusyCheck()", "params", "(<-chan time.Time, ...time.Duration)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Check SX126x module busy status")
 
 	interval := 10 * time.Millisecond
@@ -52,7 +51,7 @@ func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) err
 }
 
 func (d *Device) HardReset(timeout ...<-chan time.Time) error {
-	log := slog.With("func", "Device.HardReset()", "params", "(-)", "return", "(error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.HardReset()", "params", "(-)", "return", "(error)", "lib", "sx126x")
 	log.Debug("SX126x hard reset")
 
 	if err := d.gpio.cs.Out(gpio.High); err != nil {
@@ -80,7 +79,7 @@ func (d *Device) HardReset(timeout ...<-chan time.Time) error {
 }
 
 func (d *Device) Write(w []uint8, r []uint8, timeout ...<-chan time.Time) error {
-	log := slog.With("func", "Device.Write()", "params", "([]uint8, []uint8, ...<-chan time.Time)", "return", "(error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.Write()", "params", "([]uint8, []uint8, ...<-chan time.Time)", "return", "(error)", "lib", "sx126x")
 	log.Debug("Send data to SX126x modem")
 
 	wait := time.After(1 * time.Second)
@@ -106,7 +105,7 @@ func (d *Device) Write(w []uint8, r []uint8, timeout ...<-chan time.Time) error 
 
 // # 13.2.1 WriteRegister Function
 func (d *Device) WriteRegister(address uint16, data []uint8) (uint8, error) {
-	log := slog.With("func", "Device.WriteRegister()", "params", "(uint16, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.WriteRegister()", "params", "(uint16, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
 	log.Debug("Allow writing a block of bytes in a data memory space starting at a specific address.")
 
 	commands := append([]uint8{
@@ -131,7 +130,7 @@ func (d *Device) WriteRegister(address uint16, data []uint8) (uint8, error) {
 
 // # 13.2.2 ReadRegister Function
 func (d *Device) ReadRegister(address uint16, data []uint8) (uint8, error) {
-	log := slog.With("func", "Device.ReadRegister()", "params", "(uint16, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ReadRegister()", "params", "(uint16, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
 	log.Debug("Allow reading a block of data starting at a given address.")
 
 	commands := make([]uint8, len(data)+4) // OPCODE + ADDRESS_MSB + ADDRESS_LSB + NOP + LEN(DATA)
@@ -160,7 +159,7 @@ func (d *Device) ReadRegister(address uint16, data []uint8) (uint8, error) {
 
 // # 13.2.3 WriteBuffer Function
 func (d *Device) WriteBuffer(offset uint8, data []uint8) (uint8, error) {
-	log := slog.With("func", "Device.WriteBuffer()", "params", "(uint8, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.WriteBuffer()", "params", "(uint8, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
 	log.Debug("Store data payload to be transmitted.")
 
 	commands := append([]uint8{uint8(CmdWriteBuffer), offset}, data...)
@@ -176,7 +175,7 @@ func (d *Device) WriteBuffer(offset uint8, data []uint8) (uint8, error) {
 
 // # 13.2.4 ReadBuffer Function
 func (d *Device) ReadBuffer(offset uint8, data []uint8) (uint8, error) {
-	log := slog.With("func", "Device.ReadBuffer()", "params", "(uint8, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ReadBuffer()", "params", "(uint8, []uint8)", "return", "(uint8, error)", "lib", "sx126x")
 	log.Debug("Read bytes of payload received starting at offset")
 
 	commands := make([]uint8, len(data)+3)
@@ -331,7 +330,7 @@ func fskPulseShape(pulseShape float32) (uint8, bool) {
 }
 
 func (d *Device) ModulationConfigLoRa(spreadingFactor, codingRate uint8, bandwidth physic.Frequency, ldro bool) OptionsModulation {
-	log := slog.With("func", "Device.ModulationConfigLoRa()", "params", "(uint8, uint8, physic.Frequency, bool)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationConfigLoRa()", "params", "(uint8, uint8, physic.Frequency, bool)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	sf := spreadingFactor
 	if sf < 5 || sf > 12 {
@@ -368,7 +367,7 @@ func (d *Device) ModulationConfigLoRa(spreadingFactor, codingRate uint8, bandwid
 }
 
 func (d *Device) ModulationConfigFSK(bitrate, freqDeviation uint64, bandwidth physic.Frequency, pulseShape float32) OptionsModulation {
-	log := slog.With("func", "Device.ModulationConfigFSK()", "params", "(uint64, uint64, physic.Frequency, float32)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationConfigFSK()", "params", "(uint64, uint64, physic.Frequency, float32)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	bw, bwOk := fskBandwidth(bandwidth)
 	if !bwOk {
@@ -404,7 +403,7 @@ func (d *Device) ModulationConfigFSK(bitrate, freqDeviation uint64, bandwidth ph
 }
 
 func (d *Device) ModulationSF(spreadingFactor uint8) OptionsModulation {
-	log := slog.With("func", "Device.ModulationSF()", "params", "(uint8)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationSF()", "params", "(uint8)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	sf := spreadingFactor
 	if sf < 5 || sf > 12 {
@@ -419,7 +418,7 @@ func (d *Device) ModulationSF(spreadingFactor uint8) OptionsModulation {
 }
 
 func (d *Device) ModulationBW(bandwidth physic.Frequency) OptionsModulation {
-	log := slog.With("func", "Device.ModulationBW()", "params", "(physic.Frequency)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationBW()", "params", "(physic.Frequency)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	bw, ok := loraBandwidth(bandwidth)
 	if !ok {
@@ -434,7 +433,7 @@ func (d *Device) ModulationBW(bandwidth physic.Frequency) OptionsModulation {
 }
 
 func (d *Device) ModulationCR(codingRate uint8) OptionsModulation {
-	log := slog.With("func", "Device.ModulationCR()", "params", "(uint8)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationCR()", "params", "(uint8)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	cr, ok := loraCodingRate(codingRate)
 	if !ok {
@@ -460,7 +459,7 @@ func (d *Device) ModulationLDRO(ldro bool) OptionsModulation {
 }
 
 func (d *Device) ModulationBR(bitrate uint64) OptionsModulation {
-	log := slog.With("func", "Device.ModulationBR()", "params", "(uint64)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationBR()", "params", "(uint64)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	br := bitrate
 	if br < FskBitrateMin || br > FskBitrateMax {
@@ -476,7 +475,7 @@ func (d *Device) ModulationBR(bitrate uint64) OptionsModulation {
 }
 
 func (d *Device) ModulationPS(pulseShape float32) OptionsModulation {
-	log := slog.With("func", "Device.ModulationPS()", "params", "(float32)", "return", "(OptionsModulation)", "lib", "sx126x")
+	log := d.log.With("func", "Device.ModulationPS()", "params", "(float32)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	ps, ok := fskPulseShape(pulseShape)
 	if !ok {
