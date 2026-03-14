@@ -5,13 +5,9 @@ import (
 	"errors"
 	"reflect"
 	"time"
-
-	"periph.io/x/conn/v3/gpio"
-	"periph.io/x/conn/v3/gpio/gpioreg"
-	"periph.io/x/conn/v3/spi"
 )
 
-func New(conn spi.Conn, cfg *Config, opts ...Option) (*Device, error) {
+func New(conn Bus, cfg *Config, opts ...Option) (*Device, error) {
 	if cfg == nil {
 		return nil, errors.New("[ SX126X ] Modem state improper; cfg is nil")
 	}
@@ -38,11 +34,11 @@ func New(conn spi.Conn, cfg *Config, opts ...Option) (*Device, error) {
 		opt(dev)
 	}
 
-	log := dev.log.With("func", "New()", "params", "(spi.Conn, *Config, ...Option)", "return", "(*Device, error)", "lib", "sx1262")
+	log := dev.log.With("func", "New()", "params", "(Bus, *Config, ...Option)", "return", "(*Device, error)", "lib", "sx1262")
 	log.Info("[ SX126X ] Initializing module")
 
-	loadPin := func(name string) (gpio.PinIO, error) {
-		p := gpioreg.ByName(name)
+	loadPin := func(name string) (PinIO, error) {
+		p := dev.gpioreg.ByName(name)
 		if p == nil {
 			return nil, errors.New("[ SX126X ] Pin not found")
 		}
@@ -74,27 +70,27 @@ func New(conn spi.Conn, cfg *Config, opts ...Option) (*Device, error) {
 		}
 	}
 
-	if err := pins.reset.Out(gpio.High); err != nil {
+	if err := pins.reset.Out(High); err != nil {
 		return nil, errors.New("[ SX126X ] Failed to set RESET pin state to HIGH: " + err.Error())
 	}
-	if err := pins.busy.In(gpio.PullNoChange, gpio.NoEdge); err != nil {
+	if err := pins.busy.In(PullNoChange, NoEdge); err != nil {
 		return nil, errors.New("[ SX126X ] Failed to set BUSY pin edge detection: " + err.Error())
 	}
-	if err := pins.dio.In(gpio.PullDown, gpio.RisingEdge); err != nil {
+	if err := pins.dio.In(PullDown, RisingEdge); err != nil {
 		return nil, errors.New("[ SX126X ] Failed to set DIO1 pin pull down and edge detection: " + err.Error())
 	}
 	if pins.txEn != nil {
-		if err := pins.txEn.Out(gpio.Low); err != nil {
+		if err := pins.txEn.Out(Low); err != nil {
 			return nil, errors.New("[ SX126X ] Failed to set TxEn pin state to LOW: " + err.Error())
 		}
 	}
 	if pins.rxEn != nil {
-		if err := pins.rxEn.Out(gpio.Low); err != nil {
+		if err := pins.rxEn.Out(Low); err != nil {
 			return nil, errors.New("[ SX126X ] Failed to set RxEn pin state to LOW: " + err.Error())
 		}
 	}
 	if pins.cs != nil {
-		if err := pins.cs.Out(gpio.High); err != nil {
+		if err := pins.cs.Out(High); err != nil {
 			return nil, errors.New("[ SX126X ] Failed to set CS pin state to HIGH: " + err.Error())
 		}
 	}
@@ -129,7 +125,7 @@ func (d *Device) Close(sleepMode SleepConfig) error {
 	}
 
 	if d.gpio.txEn != nil {
-		if err = d.gpio.txEn.Out(gpio.Low); err != nil {
+		if err = d.gpio.txEn.Out(Low); err != nil {
 			log.Error("[ SX126X ] Could not set TxEn pin to LOW", "error", err)
 		}
 	}

@@ -1,11 +1,8 @@
 package sx126x
 
 import (
-	"fmt"
+	"errors"
 	"time"
-
-	"periph.io/x/conn/v3/gpio"
-	"periph.io/x/conn/v3/physic"
 )
 
 func WithLogger(log Logger) Option {
@@ -28,7 +25,7 @@ func Hex16(w uint16) string {
 
 func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) error {
 	log := d.log.With("func", "Device.BusyCheck()", "params", "(<-chan time.Time, ...time.Duration)", "return", "(error)", "lib", "sx126x")
-	log.Debug("[ SX126X ] Check SX126x module busy status")
+	log.Debug("[ SX126X ] Check module busy status")
 
 	interval := 10 * time.Millisecond
 	if len(sleep) > 0 {
@@ -39,10 +36,10 @@ func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) err
 	for {
 		select {
 		case <-timeout:
-			return fmt.Errorf("Timeout!")
+			return errors.New("[ SX126X ] Timeout!")
 		default:
-			if d.gpio.busy.Read() == gpio.Low {
-				log.Debug("[ SX126X ] SX126x modem ready")
+			if d.gpio.busy.Read() == Low {
+				log.Debug("[ SX126X ] Modem ready")
 				return nil
 			}
 			time.Sleep(interval) // Avoids busy wait in loop
@@ -52,17 +49,17 @@ func (d *Device) BusyCheck(timeout <-chan time.Time, sleep ...time.Duration) err
 
 func (d *Device) HardReset(timeout ...<-chan time.Time) error {
 	log := d.log.With("func", "Device.HardReset()", "params", "(-)", "return", "(error)", "lib", "sx126x")
-	log.Debug("[ SX126X ] SX126x hard reset")
+	log.Debug("[ SX126X ] Hard reset")
 
-	if err := d.gpio.cs.Out(gpio.High); err != nil {
-		return fmt.Errorf("Failed to set CS pin state to HIGH: %w", err)
+	if err := d.gpio.cs.Out(High); err != nil {
+		return errors.New("[ SX126X ] Failed to set CS pin state to HIGH: " + err.Error())
 	}
-	if err := d.gpio.reset.Out(gpio.Low); err != nil {
-		return fmt.Errorf("Failed to set RESET pin state to LOW: %w", err)
+	if err := d.gpio.reset.Out(Low); err != nil {
+		return errors.New("[ SX126X ] Failed to set RESET pin state to LOW: " + err.Error())
 	}
 	time.Sleep(1 * time.Millisecond)
-	if err := d.gpio.reset.Out(gpio.High); err != nil {
-		return fmt.Errorf("Failed to set RESET pin state to HIGH: %w", err)
+	if err := d.gpio.reset.Out(High); err != nil {
+		return errors.New("[ SX126X ] Failed to set RESET pin state to HIGH: " + err.Error())
 	}
 
 	wait := time.After(5 * time.Second)
@@ -71,7 +68,7 @@ func (d *Device) HardReset(timeout ...<-chan time.Time) error {
 	}
 
 	if err := d.BusyCheck(wait); err != nil {
-		return fmt.Errorf("Failed to reset SX126x modem: %w", err)
+		return errors.New("[ SX126X ] Failed to reset SX126x modem: " + err.Error())
 	}
 
 	log.Info("[ SX126X ] Modem hard reset success")
@@ -80,7 +77,7 @@ func (d *Device) HardReset(timeout ...<-chan time.Time) error {
 
 func (d *Device) Write(w []uint8, r []uint8, timeout ...<-chan time.Time) error {
 	log := d.log.With("func", "Device.Write()", "params", "([]uint8, []uint8, ...<-chan time.Time)", "return", "(error)", "lib", "sx126x")
-	log.Debug("[ SX126X ] Send data to SX126x modem")
+	log.Debug("[ SX126X ] Send data to modem")
 
 	wait := time.After(1 * time.Second)
 	if len(timeout) > 0 {
@@ -88,16 +85,16 @@ func (d *Device) Write(w []uint8, r []uint8, timeout ...<-chan time.Time) error 
 	}
 
 	if err := d.BusyCheck(wait); err != nil {
-		return fmt.Errorf("SX126x modem busy: %w", err)
+		return errors.New("[ SX126X ] Modem busy: " + err.Error())
 	}
 
-	if err := d.gpio.cs.Out(gpio.Low); err != nil {
-		return fmt.Errorf("Failed to set CS pin state to %v: %w", gpio.Low, err)
+	if err := d.gpio.cs.Out(Low); err != nil {
+		return errors.New("[ SX126X ] Failed to set CS pin state to LOW: " + err.Error())
 	}
-	defer d.gpio.cs.Out(gpio.High) // We must get CS pin to HIGH in the end
+	defer d.gpio.cs.Out(High) // We must get CS pin to HIGH in the end
 
 	if err := d.SPI.Tx(w, r); err != nil {
-		return fmt.Errorf("Could not send or read data: %w", err)
+		return errors.New("[ SX126X ] Could not send or read data: " + err.Error())
 	}
 
 	return nil
@@ -116,15 +113,10 @@ func (d *Device) WriteRegister(address uint16, data []uint8) (uint8, error) {
 	status := make([]uint8, len(commands))
 
 	if err := d.Write(commands, status); err != nil {
-		return 0, fmt.Errorf("Could not write data to register at address 0x%04X: %w", address, err)
+		return 0, errors.New("[ SX126X ] Could not write data to register at address '" + Hex16(address) + "' ; " + err.Error())
 	}
 
-	// log.Debug("[ SX126X ] SPI write raw",
-	// 	"tx", fmt.Sprintf("% X", commands),
-	// 	"rx", fmt.Sprintf("% X", status),
-	// )
-
-	log.Debug("[ SX126X ] Data write to register success", "status", fmt.Sprintf("0x%02X", status[3]), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
+	log.Debug("[ SX126X ] Data write to register success", "status", Hex8(status[3]), "address", Hex16(address))
 	return status[3], nil
 }
 
@@ -142,18 +134,13 @@ func (d *Device) ReadRegister(address uint16, data []uint8) (uint8, error) {
 	rx := make([]uint8, len(commands))
 
 	if err := d.Write(commands, rx); err != nil {
-		return 0, fmt.Errorf("Could not read data from register at address 0x%04X: %w", address, err)
+		return 0, errors.New("[ SX126X ] Could not read data from register at address '" + Hex16(address) + "' ; " + err.Error())
 	}
 
 	status := rx[3]
 	copy(data, rx[4:])
 
-	// log.Debug("[ SX126X ] SPI read raw",
-	// 	"tx", fmt.Sprintf("% X", commands),
-	// 	"rx", fmt.Sprintf("% X", rx),
-	// )
-
-	log.Debug("[ SX126X ] Data read from register success", "status", fmt.Sprintf("0x%02X", status), "address", fmt.Sprintf("0x%04X", address), "data", fmt.Sprintf("0x%02X", data))
+	log.Debug("[ SX126X ] Data read from register success", "status", Hex8(status), "address", Hex16(address))
 	return status, nil
 }
 
@@ -166,10 +153,10 @@ func (d *Device) WriteBuffer(offset uint8, data []uint8) (uint8, error) {
 	status := make([]uint8, len(commands))
 
 	if err := d.Write(commands, status); err != nil {
-		return 0, fmt.Errorf("Could not write data to buffer at offset 0x%02X: %w", offset, err)
+		return 0, errors.New("Could not write data to buffer at offset '" + Hex8(offset) + "' ; " + err.Error())
 	}
 
-	log.Debug("[ SX126X ] Data write to register success", "address", fmt.Sprintf("0x%02X", offset))
+	log.Debug("[ SX126X ] Data write to register success", "address", Hex8(offset))
 	return status[0], nil
 }
 
@@ -185,13 +172,13 @@ func (d *Device) ReadBuffer(offset uint8, data []uint8) (uint8, error) {
 	rx := make([]uint8, len(commands))
 
 	if err := d.Write(commands, rx); err != nil {
-		return 0, fmt.Errorf("Could not read data from bufferr at offset 0x%02X: %w", offset, err)
+		return 0, errors.New("Could not read data from buffer at offset '" + Hex8(offset) + "' ; " + err.Error())
 	}
 
 	status := rx[0]
 	copy(data, rx[3:])
 
-	log.Debug("[ SX126X ] Data read from register success", "address", fmt.Sprintf("0x%02X", offset))
+	log.Debug("[ SX126X ] Data read from register success", "address", Hex8(offset))
 	return status, nil
 }
 
@@ -269,47 +256,47 @@ func loraCodingRate(codingRate uint8) (uint8, bool) {
 	return cr, ok
 }
 
-func loraBandwidth(bandwidth physic.Frequency) (uint8, bool) {
-	bwToByte := map[physic.Frequency]uint8{
-		7800 * physic.Hertz:   uint8(LoRaBW_7_8),
-		10400 * physic.Hertz:  uint8(LoRaBW_10_4),
-		15600 * physic.Hertz:  uint8(LoRaBW_15_6),
-		20800 * physic.Hertz:  uint8(LoRaBW_20_8),
-		31250 * physic.Hertz:  uint8(LoRaBW_31_25),
-		41700 * physic.Hertz:  uint8(LoRaBW_41_7),
-		62500 * physic.Hertz:  uint8(LoRaBW_62_5),
-		125000 * physic.Hertz: uint8(LoRaBW_125),
-		250000 * physic.Hertz: uint8(LoRaBW_250),
-		500000 * physic.Hertz: uint8(LoRaBW_500),
+func loraBandwidth(bandwidth Frequency) (uint8, bool) {
+	bwToByte := map[Frequency]uint8{
+		7800 * Hertz:   uint8(LoRaBW_7_8),
+		10400 * Hertz:  uint8(LoRaBW_10_4),
+		15600 * Hertz:  uint8(LoRaBW_15_6),
+		20800 * Hertz:  uint8(LoRaBW_20_8),
+		31250 * Hertz:  uint8(LoRaBW_31_25),
+		41700 * Hertz:  uint8(LoRaBW_41_7),
+		62500 * Hertz:  uint8(LoRaBW_62_5),
+		125000 * Hertz: uint8(LoRaBW_125),
+		250000 * Hertz: uint8(LoRaBW_250),
+		500000 * Hertz: uint8(LoRaBW_500),
 	}
 
 	bw, ok := bwToByte[bandwidth]
 	return bw, ok
 }
 
-func fskBandwidth(bandwidth physic.Frequency) (uint8, bool) {
-	bwToByte := map[physic.Frequency]uint8{
-		4800 * physic.Hertz:   uint8(FskBW_4800),
-		5800 * physic.Hertz:   uint8(FskBW_5800),
-		7300 * physic.Hertz:   uint8(FskBW_7300),
-		9700 * physic.Hertz:   uint8(FskBW_9700),
-		11700 * physic.Hertz:  uint8(FskBW_11700),
-		14600 * physic.Hertz:  uint8(FskBW_14600),
-		19500 * physic.Hertz:  uint8(FskBW_19500),
-		23400 * physic.Hertz:  uint8(FskBW_23400),
-		29300 * physic.Hertz:  uint8(FskBW_29300),
-		39000 * physic.Hertz:  uint8(FskBW_39000),
-		46900 * physic.Hertz:  uint8(FskBW_46900),
-		58600 * physic.Hertz:  uint8(FskBW_58600),
-		78200 * physic.Hertz:  uint8(FskBW_78200),
-		93800 * physic.Hertz:  uint8(FskBW_93800),
-		117300 * physic.Hertz: uint8(FskBW_117300),
-		156200 * physic.Hertz: uint8(FskBW_156200),
-		187200 * physic.Hertz: uint8(FskBW_187200),
-		234300 * physic.Hertz: uint8(FskBW_234300),
-		312000 * physic.Hertz: uint8(FskBW_312000),
-		373600 * physic.Hertz: uint8(FskBW_373600),
-		467000 * physic.Hertz: uint8(FskBW_467000),
+func fskBandwidth(bandwidth Frequency) (uint8, bool) {
+	bwToByte := map[Frequency]uint8{
+		4800 * Hertz:   uint8(FskBW_4800),
+		5800 * Hertz:   uint8(FskBW_5800),
+		7300 * Hertz:   uint8(FskBW_7300),
+		9700 * Hertz:   uint8(FskBW_9700),
+		11700 * Hertz:  uint8(FskBW_11700),
+		14600 * Hertz:  uint8(FskBW_14600),
+		19500 * Hertz:  uint8(FskBW_19500),
+		23400 * Hertz:  uint8(FskBW_23400),
+		29300 * Hertz:  uint8(FskBW_29300),
+		39000 * Hertz:  uint8(FskBW_39000),
+		46900 * Hertz:  uint8(FskBW_46900),
+		58600 * Hertz:  uint8(FskBW_58600),
+		78200 * Hertz:  uint8(FskBW_78200),
+		93800 * Hertz:  uint8(FskBW_93800),
+		117300 * Hertz: uint8(FskBW_117300),
+		156200 * Hertz: uint8(FskBW_156200),
+		187200 * Hertz: uint8(FskBW_187200),
+		234300 * Hertz: uint8(FskBW_234300),
+		312000 * Hertz: uint8(FskBW_312000),
+		373600 * Hertz: uint8(FskBW_373600),
+		467000 * Hertz: uint8(FskBW_467000),
 	}
 
 	bw, ok := bwToByte[bandwidth]
@@ -329,14 +316,14 @@ func fskPulseShape(pulseShape float32) (uint8, bool) {
 	return ps, ok
 }
 
-func (d *Device) ModulationConfigLoRa(spreadingFactor, codingRate uint8, bandwidth physic.Frequency, ldro bool) OptionsModulation {
-	log := d.log.With("func", "Device.ModulationConfigLoRa()", "params", "(uint8, uint8, physic.Frequency, bool)", "return", "(OptionsModulation)", "lib", "sx126x")
+func (d *Device) ModulationConfigLoRa(spreadingFactor, codingRate uint8, bandwidth Frequency, ldro bool) OptionsModulation {
+	log := d.log.With("func", "Device.ModulationConfigLoRa()", "params", "(uint8, uint8, Frequency, bool)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	sf := spreadingFactor
 	if sf < 5 || sf > 12 {
 		sf = 7
-		log.Warn("Unsupported Spreading Factor", "spreadingFactor", spreadingFactor)
-		log.Warn("Setting Spreading Factor to 7")
+		log.Warn("[ SX126X ] Unsupported Spreading Factor", "spreadingFactor", spreadingFactor)
+		log.Warn("[ SX126X ] Setting Spreading Factor to 7")
 	}
 
 	ld := uint8(LDRO_OFF)
@@ -347,15 +334,15 @@ func (d *Device) ModulationConfigLoRa(spreadingFactor, codingRate uint8, bandwid
 	bw, ok := loraBandwidth(bandwidth)
 	if !ok {
 		bw = uint8(LoRaBW_125)
-		log.Warn("Unsupported bandwidth", "bw", bandwidth)
-		log.Warn("Setting bandwidth to 125 kHz")
+		log.Warn("[ SX126X ] Unsupported bandwidth", "bw", bandwidth)
+		log.Warn("[ SX126X ] Setting bandwidth to 125 kHz")
 	}
 
 	cr, ok := loraCodingRate(codingRate)
 	if !ok {
 		cr = uint8(LoRaCR_4_5)
-		log.Warn("Unsupported coding rate", "codingRate", codingRate)
-		log.Warn("Setting Coding Rate to 4/5")
+		log.Warn("[ SX126X ] Unsupported coding rate", "codingRate", codingRate)
+		log.Warn("[ SX126X ] Setting Coding Rate to 4/5")
 	}
 
 	return func(cfg *ConfigModulation) {
@@ -366,29 +353,29 @@ func (d *Device) ModulationConfigLoRa(spreadingFactor, codingRate uint8, bandwid
 	}
 }
 
-func (d *Device) ModulationConfigFSK(bitrate, freqDeviation uint64, bandwidth physic.Frequency, pulseShape float32) OptionsModulation {
-	log := d.log.With("func", "Device.ModulationConfigFSK()", "params", "(uint64, uint64, physic.Frequency, float32)", "return", "(OptionsModulation)", "lib", "sx126x")
+func (d *Device) ModulationConfigFSK(bitrate, freqDeviation uint64, bandwidth Frequency, pulseShape float32) OptionsModulation {
+	log := d.log.With("func", "Device.ModulationConfigFSK()", "params", "(uint64, uint64, Frequency, float32)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	bw, bwOk := fskBandwidth(bandwidth)
 	if !bwOk {
 		bw = uint8(FskBW_9700)
-		log.Warn("Unsupported bandwidth in FSK mode:", "bw", bandwidth)
-		log.Warn("Setting bandwidth to 9700 Hz:")
+		log.Warn("[ SX126X ] Unsupported bandwidth in FSK mode:", "bw", bandwidth)
+		log.Warn("[ SX126X ] Setting bandwidth to 9700 Hz:")
 	}
 
 	br := bitrate
 	if br < FskBitrateMin || br > FskBitrateMax {
 		br = 4800
-		log.Warn("Unsupported bitrate:", "bitrate", bitrate)
-		log.Warn("Setting bitrate to 4800 b/s:")
+		log.Warn("[ SX126X ] Unsupported bitrate:", "bitrate", bitrate)
+		log.Warn("[ SX126X ] Setting bitrate to 4800 b/s:")
 	}
 	br = (32 * RfFrequencyXtal) / br
 
 	ps, psOk := fskPulseShape(pulseShape)
 	if !psOk {
 		ps = uint8(PulseGaussianBt0_5)
-		log.Warn("Unsupported Pulse Shape:", "pulseShape", pulseShape)
-		log.Warn("Setting Pulse Shape to 0.5:")
+		log.Warn("[ SX126X ] Unsupported Pulse Shape:", "pulseShape", pulseShape)
+		log.Warn("[ SX126X ] Setting Pulse Shape to 0.5:")
 	}
 
 	fd := freqDeviation
@@ -408,8 +395,8 @@ func (d *Device) ModulationSF(spreadingFactor uint8) OptionsModulation {
 	sf := spreadingFactor
 	if sf < 5 || sf > 12 {
 		sf = 7
-		log.Warn("Unsupported Spreading Factor", "spreadingFactor", spreadingFactor)
-		log.Warn("Setting Spreading Factor to 7")
+		log.Warn("[ SX126X ] Unsupported Spreading Factor", "spreadingFactor", spreadingFactor)
+		log.Warn("[ SX126X ] Setting Spreading Factor to 7")
 	}
 
 	return func(cfg *ConfigModulation) {
@@ -417,14 +404,14 @@ func (d *Device) ModulationSF(spreadingFactor uint8) OptionsModulation {
 	}
 }
 
-func (d *Device) ModulationBW(bandwidth physic.Frequency) OptionsModulation {
-	log := d.log.With("func", "Device.ModulationBW()", "params", "(physic.Frequency)", "return", "(OptionsModulation)", "lib", "sx126x")
+func (d *Device) ModulationBW(bandwidth Frequency) OptionsModulation {
+	log := d.log.With("func", "Device.ModulationBW()", "params", "(Frequency)", "return", "(OptionsModulation)", "lib", "sx126x")
 
 	bw, ok := loraBandwidth(bandwidth)
 	if !ok {
 		bw = uint8(LoRaBW_125)
-		log.Warn("Unsupported bandwidth", "bw", bandwidth)
-		log.Warn("Setting bandwidth to 125 kHz")
+		log.Warn("[ SX126X ] Unsupported bandwidth", "bw", bandwidth)
+		log.Warn("[ SX126X ] Setting bandwidth to 125 kHz")
 	}
 
 	return func(cfg *ConfigModulation) {
@@ -438,8 +425,8 @@ func (d *Device) ModulationCR(codingRate uint8) OptionsModulation {
 	cr, ok := loraCodingRate(codingRate)
 	if !ok {
 		cr = uint8(LoRaCR_4_5)
-		log.Warn("Unsupported coding rate", "codingRate", cr)
-		log.Warn("Setting Coding Rate to 4/5")
+		log.Warn("[ SX126X ] Unsupported coding rate", "codingRate", cr)
+		log.Warn("[ SX126X ] Setting Coding Rate to 4/5")
 	}
 
 	return func(cfg *ConfigModulation) {
@@ -464,8 +451,8 @@ func (d *Device) ModulationBR(bitrate uint64) OptionsModulation {
 	br := bitrate
 	if br < FskBitrateMin || br > FskBitrateMax {
 		br = 4800
-		log.Warn("Unsupported bitrate:", "bitrate", bitrate)
-		log.Warn("Setting bitrate to 4800 b/s:")
+		log.Warn("[ SX126X ] Unsupported bitrate:", "bitrate", bitrate)
+		log.Warn("[ SX126X ] Setting bitrate to 4800 b/s:")
 	}
 	br = (32 * RfFrequencyXtal) / br
 
@@ -480,8 +467,8 @@ func (d *Device) ModulationPS(pulseShape float32) OptionsModulation {
 	ps, ok := fskPulseShape(pulseShape)
 	if !ok {
 		ps = uint8(PulseGaussianBt0_5)
-		log.Warn("Unsupported Pulse Shape:", "pulseShape", pulseShape)
-		log.Warn("Setting Pulse Shape to 0.5:")
+		log.Warn("[ SX126X ] Unsupported Pulse Shape:", "pulseShape", pulseShape)
+		log.Warn("[ SX126X ] Setting Pulse Shape to 0.5:")
 	}
 
 	return func(cfg *ConfigModulation) {

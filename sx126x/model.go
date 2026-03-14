@@ -1,8 +1,6 @@
 package sx126x
 
-import (
-	"periph.io/x/conn/v3/gpio"
-)
+import "time"
 
 type Config struct {
 	Enable          bool         `yaml:"enable" env:"SX126X_ENABLE" env-default:"false"`
@@ -79,13 +77,66 @@ type Workarounds struct {
 	InvertedIQLoss        bool `yaml:"inverted_iq_loss" env:"SX126X_INVERTED_IQ_LOSS" env-default:"false"`
 }
 
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio#Pull
+type Pull uint8
+
+const (
+	PullNoChange Pull = 0 // Do not change the previous pull resistor setting or an unknown value
+	Float        Pull = 1 // Let the input float
+	PullDown     Pull = 2 // Apply pull-down
+	PullUp       Pull = 3 // Apply pull-up
+)
+
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio#Level
+type Level bool
+
+const (
+	Low  Level = false
+	High Level = true
+)
+
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio#Edge
+type Edge int
+
+const (
+	NoEdge      Edge = 0
+	RisingEdge  Edge = 1
+	FallingEdge Edge = 2
+	BothEdges   Edge = 3
+)
+
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio#PinOut
+type PinOut interface {
+	Out(l Level) error
+}
+
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio#PinIn
+type PinIn interface {
+	In(pull Pull, edge Edge) error
+	Read() Level
+	WaitForEdge(timeout time.Duration) bool
+}
+
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio#PinIO
+type PinIO interface {
+	In(pull Pull, edge Edge) error
+	Out(l Level) error
+	Read() Level
+	WaitForEdge(timeout time.Duration) bool
+}
+
+// https://pkg.go.dev/periph.io/x/conn/v3/gpio/gpioreg#ByName
+type Pin interface {
+	ByName(name string) PinIO
+}
+
 type pinsDirection struct {
-	reset gpio.PinOut
-	busy  gpio.PinIn
-	dio   gpio.PinIn
-	txEn  gpio.PinOut
-	rxEn  gpio.PinOut
-	cs    gpio.PinOut
+	reset PinOut
+	busy  PinIn
+	dio   PinIn
+	txEn  PinOut
+	rxEn  PinOut
+	cs    PinOut
 }
 
 type ModemStatus struct {
@@ -163,6 +214,7 @@ type Device struct {
 	Config  *Config
 	Status  Status
 	Queue   Queue
+	gpioreg Pin
 	gpio    *pinsDirection
 	irqChan chan struct{}
 	log     Logger

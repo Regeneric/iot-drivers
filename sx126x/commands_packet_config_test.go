@@ -5,8 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"testing"
-
-	"periph.io/x/conn/v3/physic"
 )
 
 func init() {
@@ -403,7 +401,7 @@ func TestSetModulationParams(t *testing.T) {
 			},
 			fsk: nil,
 			options: func(d *Device) []OptionsModulation {
-				return []OptionsModulation{d.ModulationConfigLoRa(7, 5, 125000*physic.Hertz, true)}
+				return []OptionsModulation{d.ModulationConfigLoRa(7, 5, 125000*Hertz, true)}
 			},
 			txBytes:     []uint8{0x8B, 0x07, 0x04, 0x01, 0x01},
 			expectError: false,
@@ -420,7 +418,7 @@ func TestSetModulationParams(t *testing.T) {
 			},
 			fsk: nil,
 			options: func(d *Device) []OptionsModulation {
-				return []OptionsModulation{d.ModulationBW(125000 * physic.Hertz)}
+				return []OptionsModulation{d.ModulationBW(125000 * Hertz)}
 			},
 			txBytes:     []uint8{0x8B, 0x07, 0x04, 0x01, 0x00},
 			expectError: false,
@@ -702,7 +700,7 @@ func TestSetModulationParams(t *testing.T) {
 				fd: 0,
 			},
 			options: func(d *Device) []OptionsModulation {
-				return []OptionsModulation{d.ModulationConfigFSK(4800, 2400, 9700*physic.Hertz, 0.5)}
+				return []OptionsModulation{d.ModulationConfigFSK(4800, 2400, 9700*Hertz, 0.5)}
 			},
 			txBytes:     []uint8{0x8B, 0x03, 0x41, 0x55, 0x09, 0x1E, 0x00, 0x09, 0xD4},
 			expectError: false,

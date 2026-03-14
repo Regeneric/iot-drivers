@@ -3,8 +3,6 @@ package sx126x
 import (
 	"errors"
 	"strconv"
-
-	"periph.io/x/conn/v3/physic"
 )
 
 // # 13.1.1 SetSleep
@@ -507,11 +505,11 @@ func (d *Device) SetDIO3AsTCXOCtrl(voltage TcxoVoltage, timeout int32) error {
 }
 
 // # 13.4.1 SetRfFrequency
-func (d *Device) SetRfFrequency(frequency physic.Frequency) error {
-	log := d.log.With("func", "Device.SetRfFrequency()", "params", "(physic.Frequency)", "return", "(error)", "lib", "sx126x")
+func (d *Device) SetRfFrequency(frequency Frequency) error {
+	log := d.log.With("func", "Device.SetRfFrequency()", "params", "(Frequency)", "return", "(error)", "lib", "sx126x")
 	log.Debug("[ SX126X ] Set the frequency of the RF frequency mode")
 
-	freqHz := uint64(frequency / physic.Hertz)
+	freqHz := uint64(frequency)
 	freqRf := (freqHz * RfFrequencyNom) / RfFrequencyXtal // Freq(Hz) * 2^25 / 32 MHz
 
 	commands := []uint8{
@@ -523,11 +521,10 @@ func (d *Device) SetRfFrequency(frequency physic.Frequency) error {
 	}
 
 	if err := d.Write(commands, nil); err != nil {
-		return errors.New("Could not set RF frequency") // TODO print this frequency
+		return errors.New("Could not set RF frequency " + strconv.Itoa(int(frequency/MegaHertz)) + " MHz")
 	}
 
-	// log.Info("[ SX126X ] Modem frequency set", "frequency", fmt.Sprintf("%d MHz", frequency/physic.MegaHertz))
-	log.Info("[ SX126X ] Modem frequency set")
+	log.Info("[ SX126X ] Modem frequency set", "frequency", strconv.Itoa(int(frequency/MegaHertz))+" MHz")
 	return nil
 }
 
@@ -587,7 +584,7 @@ func (d *Device) SetModulationParams(opts ...OptionsModulation) error {
 
 	switch d.Config.Modem {
 	case "lora":
-		bw, bwOk := loraBandwidth(physic.Frequency(d.Config.Bandwidth * uint64(physic.Hertz)))
+		bw, bwOk := loraBandwidth(Frequency(d.Config.Bandwidth))
 		if !bwOk {
 			bw = uint8(LoRaBW_125)
 			log.Warn("[ SX126X ] Unsupported bandwidth in LoRa mode", "bw", d.Config.Bandwidth)
@@ -619,7 +616,7 @@ func (d *Device) SetModulationParams(opts ...OptionsModulation) error {
 		cfg.CodingRate = cr
 		cfg.LDRO = ld
 	case "fsk":
-		bw, bwOk := fskBandwidth(physic.Frequency(d.Config.Bandwidth * uint64(physic.Hertz)))
+		bw, bwOk := fskBandwidth(Frequency(d.Config.Bandwidth))
 		if !bwOk {
 			bw = uint8(FskBW_9700)
 			log.Warn("[ SX126X ] Unsupported bandwidth in FSK mode:", "bw", d.Config.Bandwidth)
