@@ -118,13 +118,14 @@ const (
 	RegulatorDcDc RegulatorMode = 0x01 // DC-DC
 )
 
-type TxRxTimeout uint32
+type TxRxTimeout int32
 
 const (
 	// timeouts = timeout * 15.625 us (24-bit).
 	TxSingle     TxRxTimeout = 0x000000 // No timeout (Tx single mode)
 	RxSingle     TxRxTimeout = 0x000000 // No timeout (Rx single mode)
 	RxContinuous TxRxTimeout = 0xFFFFFF // Infinite (Rx continuous mode)
+	RxNoTimeout  TxRxTimeout = -1
 )
 
 type FallbackMode uint8

@@ -1002,7 +1002,7 @@ func TestSetDIO3AsTCXOCtrl(t *testing.T) {
 		name    string
 		desc    string
 		voltage TcxoVoltage
-		timeout uint32
+		timeout int32
 		txBytes []uint8
 	}{
 		{

@@ -17,13 +17,13 @@ func TestSetTx(t *testing.T) {
 	tests := []struct {
 		name    string
 		desc    string
-		timeout uint32
+		timeout int32
 		txBytes []uint8
 	}{
 		{
 			name:    "TxSingle",
 			desc:    "Verifies setting TX mode with a zero timeout (TxSingle), which transmits a single packet and automatically returns to Standby mode",
-			timeout: uint32(TxSingle),
+			timeout: int32(TxSingle),
 			txBytes: []uint8{0x83, 0x00, 0x00, 0x00},
 		},
 		{
@@ -47,7 +47,7 @@ func TestSetTx(t *testing.T) {
 		{
 			name:    "Overflow24bit",
 			desc:    "Verifies that a 32-bit integer is safely truncated by masking out the highest byte, strictly enforcing the 24-bit limit of the register",
-			timeout: 0xFF123456,
+			timeout: 0x77123456,
 			txBytes: []uint8{0x83, 0x12, 0x34, 0x56},
 		},
 	}
@@ -75,19 +75,19 @@ func TestSetRx(t *testing.T) {
 	tests := []struct {
 		name    string
 		desc    string
-		timeout uint32
+		timeout int32
 		txBytes []uint8
 	}{
 		{
 			name:    "RxSingle",
 			desc:    "Verifies setting RX mode with a zero timeout (RxSingle), which configures the modem to receive a single packet and then return to Standby mode",
-			timeout: uint32(RxSingle),
+			timeout: int32(RxSingle),
 			txBytes: []uint8{0x82, 0x00, 0x00, 0x00},
 		},
 		{
 			name:    "RxContinuous",
 			desc:    "Verifies setting RX mode with the maximum timeout (RxContinuous), which keeps the modem in continuous reception mode",
-			timeout: uint32(RxContinuous),
+			timeout: int32(RxContinuous),
 			txBytes: []uint8{0x82, 0xFF, 0xFF, 0xFF},
 		},
 		{
@@ -111,7 +111,7 @@ func TestSetRx(t *testing.T) {
 		{
 			name:    "Overflow24bit",
 			desc:    "Verifies that a 32-bit integer is safely truncated by masking out the highest byte, strictly enforcing the 24-bit limit of the register",
-			timeout: 0xFF123456,
+			timeout: 0x77123456,
 			txBytes: []uint8{0x82, 0x12, 0x34, 0x56},
 		},
 	}

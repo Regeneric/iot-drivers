@@ -1,80 +1,95 @@
 package sgp30
 
 import (
-	"fmt"
-	"log/slog"
+	"errors"
 	"os"
 	"reflect"
 )
 
-func New(i2c Bus, cfg *Config) (*Sensor, error) {
-	log := slog.With("func", "New()", "params", "(Bus, *cfg)", "return", "(*Sensor, error)", "package", "sgp30")
-	log.Info("SGP30 single sensor constructor", "name", cfg.Name)
-
+func New(i2c Bus, cfg *Config, opts ...Option) (*Device, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("SGP30 sensor state improper; cfg is nil")
+		return nil, errors.New("[ SGP30 ] Sensor state improper; cfg is nil")
 	}
 	if i2c == nil || reflect.ValueOf(i2c).IsNil() {
-		return nil, fmt.Errorf("SGP30 sensor state improper; i2c is nil")
+		return nil, errors.New("[ SGP30 ] Sensor state improper; i2c is nil")
 	}
 
-	return &Sensor{
-		hw: &Device{
-			I2C:    i2c,
-			Config: cfg,
-		},
-	}, nil
+	dev := &Device{
+		I2C:    i2c,
+		Config: cfg,
+		log:    noplog{}, // Default empty logger
+	}
+
+	for _, opt := range opts {
+		opt(dev)
+	}
+
+	log := dev.log.With("func", "New()", "params", "(Bus, *cfg, ...Option)", "return", "(*Device, error)", "lib", "sgp30")
+	log.Info("[ SGP30 ] Single sensor constructor", "name", cfg.Name)
+
+	return dev, nil
 }
 
 // TODO full initilization path with optional settings
-func Setup(buses map[string]Bus, cfg *Group) (map[string]*Sensor, func(), error) {
-	log := slog.With("func", "Setup()", "params", "(*cfg, map[string]Bus)", "return", "(map[string]*Sensor, func(), error)", "package", "sgp30")
-	log.Info("SGP30 sensors setup")
-
-	if cfg.Enable == false {
-		return nil, func() {}, fmt.Errorf("SGP30 sensors disabled in the config file")
+func Setup(buses map[string]Bus, cfg *Group, logger Logger) (map[string]*Device, func(), error) {
+	if logger == nil {
+		logger = noplog{}
 	}
 
-	sensors := make(map[string]*Sensor)
+	setupLog := logger.With("func", "Setup()", "params", "(*cfg, map[string]Bus, Logger)", "return", "(map[string]*Device, func(), error)", "lib", "sgp30")
+	setupLog.Info("[ SGP30 ] All sensors setup")
+
+	if cfg.Enable == false {
+		return nil, func() {}, errors.New("[ SGP30 ] All sensors disabled in the config file")
+	}
+
+	sensors := make(map[string]*Device)
 	var closers []func() error
 
 	cleanup := func() {
 		for i, c := range closers {
-			log.Debug("Closing SGP30 sensor and saving baseline values...", "sensor", i)
+			setupLog.Debug("[ SGP30 ] Closing SGP30 sensor and saving baseline values...", "sensor", i)
 			_ = c()
 		}
 	}
 
 	for key, dev := range cfg.Devices {
 		if dev.Enable == false {
-			log.Debug("Sensor disabled in the config file", "name", dev.Name, "bus", dev.BusName, "address", fmt.Sprintf("[%#x]", dev.Address))
+			setupLog.Debug("[ SGP30 ] Sensor disabled in the config file;", "name [", dev.Name, "] bus [", dev.BusName, "] address [", Hex8(dev.Address), "]")
 			continue
 		}
 
 		bus, ok := buses[dev.BusName]
 		if !ok {
 			cleanup()
-			return nil, func() {}, fmt.Errorf("I2C bus '%s' not found for SGP30 sensor '%s' with address '[%#x]'", dev.BusName, dev.Name, dev.Address)
+			return nil, func() {}, errors.New("[ SGP30 ] I2C bus '" + dev.BusName + "' not found for SGP30 sensor '" + dev.Name + "' with address [ " + Hex8(dev.Address) + " ]")
 		}
 
-		sensor, err := New(bus, &dev)
+		sensor, err := New(bus, &dev, WithLogger(logger))
 		if err != nil {
 			cleanup()
 			return nil, func() {}, err
 		}
 
-		if err := sensor.hw.IaqInit(); err != nil {
+		if err := sensor.IaqInit(); err != nil {
 			cleanup()
-			return nil, func() {}, fmt.Errorf("SGP30 sensors '%s' on bus '%s' and address '[%#x]' unresponsive: %w", dev.Name, dev.BusName, dev.Address, err)
+			return nil, func() {}, errors.New("[ SGP30 ] SGP30 sensor '" + dev.Name + "' on bus '" + dev.BusName + "' with address [ " + Hex8(dev.Address) + " ] unresponsive: " + err.Error())
+		}
+
+		// temporary
+		baseline := []uint8{0xA1, 0xAF, 0x58, 0xA5, 0x2A, 0x54}
+		if err := sensor.SetIaqBaseline(baseline); err != nil {
+			cleanup()
+			return nil, func() {}, errors.New("[ SGP30 ] SGP30 sensor '" + dev.Name + "' on bus '" + dev.BusName + "' with address [ " + Hex8(dev.Address) + " ] unresponsive: " + err.Error())
 		}
 
 		closers = append(closers, func() error {
 			baseline := make([]uint8, 6)
-			if err := sensor.hw.GetIaqBaseline(baseline); err != nil {
+			if err := sensor.GetIaqBaseline(baseline); err != nil {
 				return err
 			}
 
-			filename := fmt.Sprintf("sgp30_baseline_%s.bin", key)
+			filename := "sgp30_baseline" + stringSanitize(key) + ".bin"
 			if err := os.WriteFile(filename, baseline, 0644); err != nil {
 				return err
 			}
@@ -83,7 +98,7 @@ func Setup(buses map[string]Bus, cfg *Group) (map[string]*Sensor, func(), error)
 		})
 
 		sensors[key] = sensor
-		log.Debug("SGP30 sensor configured and initilized", "name", dev.Name, "bus", dev.BusName, "address", fmt.Sprintf("[%#x]", dev.Address))
+		setupLog.Debug("[ SGP30 ] Sensor configured and initilized;", "name [", dev.Name, "] bus [", dev.BusName, "] address [", Hex8(dev.Address), "]")
 	}
 
 	return sensors, cleanup, nil
