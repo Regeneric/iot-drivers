@@ -25,6 +25,7 @@ func New(conn Bus, cfg *Config, opts ...Option) (*Device, error) {
 		Config:  cfg,
 		Status:  Status{},
 		Queue:   Queue{},
+		gpioreg: nil,
 		gpio:    &pinsDirection{},
 		irqChan: make(chan struct{}),
 		log:     noplog{},
@@ -37,64 +38,67 @@ func New(conn Bus, cfg *Config, opts ...Option) (*Device, error) {
 	log := dev.log.With("func", "New()", "params", "(Bus, *Config, ...Option)", "return", "(*Device, error)", "lib", "sx1262")
 	log.Info("[ SX126X ] Initializing module")
 
-	loadPin := func(name string) (PinIO, error) {
-		p := dev.gpioreg.ByName(name)
-		if p == nil {
-			return nil, errors.New("[ SX126X ] Pin not found")
+	// We can define and configure pins in the higher abstraction layer
+	if dev.gpioreg != nil {
+		loadPin := func(name string) (PinIO, error) {
+			p := dev.gpioreg.ByName(name)
+			if p == nil {
+				return nil, errors.New("[ SX126X ] Pin not found")
+			}
+			log.Debug("[ SX126X ] Pin found", "pin", name)
+			return p, nil
 		}
-		log.Debug("[ SX126X ] Pin found", "pin", name)
-		return p, nil
-	}
 
-	var err error
-	pins := &pinsDirection{}
+		var err error
+		pins := &pinsDirection{}
 
-	if pins.reset, err = loadPin(cfg.Pins.Reset); err != nil {
-		return nil, err
-	}
-	if pins.busy, err = loadPin(cfg.Pins.Busy); err != nil {
-		return nil, err
-	}
-	if pins.dio, err = loadPin(cfg.Pins.DIO); err != nil {
-		return nil, err
-	}
-	if pins.txEn, err = loadPin(cfg.Pins.TxEn); err != nil {
-		return nil, err
-	}
-	if pins.rxEn, err = loadPin(cfg.Pins.RxEn); err != nil {
-		log.Warn(err.Error())
-	}
-	if cfg.Pins.CS != "" {
-		if pins.cs, err = loadPin(cfg.Pins.CS); err != nil {
+		if pins.reset, err = loadPin(cfg.Pins.Reset); err != nil {
 			return nil, err
 		}
-	}
+		if pins.busy, err = loadPin(cfg.Pins.Busy); err != nil {
+			return nil, err
+		}
+		if pins.dio, err = loadPin(cfg.Pins.DIO); err != nil {
+			return nil, err
+		}
+		if pins.txEn, err = loadPin(cfg.Pins.TxEn); err != nil {
+			return nil, err
+		}
+		if pins.rxEn, err = loadPin(cfg.Pins.RxEn); err != nil {
+			log.Warn(err.Error())
+		}
+		if cfg.Pins.CS != "" {
+			if pins.cs, err = loadPin(cfg.Pins.CS); err != nil {
+				return nil, err
+			}
+		}
 
-	if err := pins.reset.Out(High); err != nil {
-		return nil, errors.New("[ SX126X ] Failed to set RESET pin state to HIGH: " + err.Error())
-	}
-	if err := pins.busy.In(PullNoChange, NoEdge); err != nil {
-		return nil, errors.New("[ SX126X ] Failed to set BUSY pin edge detection: " + err.Error())
-	}
-	if err := pins.dio.In(PullDown, RisingEdge); err != nil {
-		return nil, errors.New("[ SX126X ] Failed to set DIO1 pin pull down and edge detection: " + err.Error())
-	}
-	if pins.txEn != nil {
-		if err := pins.txEn.Out(Low); err != nil {
-			return nil, errors.New("[ SX126X ] Failed to set TxEn pin state to LOW: " + err.Error())
+		if err := pins.reset.Out(High); err != nil {
+			return nil, errors.New("[ SX126X ] Failed to set RESET pin state to HIGH: " + err.Error())
 		}
-	}
-	if pins.rxEn != nil {
-		if err := pins.rxEn.Out(Low); err != nil {
-			return nil, errors.New("[ SX126X ] Failed to set RxEn pin state to LOW: " + err.Error())
+		if err := pins.busy.In(PullNoChange, NoEdge); err != nil {
+			return nil, errors.New("[ SX126X ] Failed to set BUSY pin edge detection: " + err.Error())
 		}
-	}
-	if pins.cs != nil {
-		if err := pins.cs.Out(High); err != nil {
-			return nil, errors.New("[ SX126X ] Failed to set CS pin state to HIGH: " + err.Error())
+		if err := pins.dio.In(PullDown, RisingEdge); err != nil {
+			return nil, errors.New("[ SX126X ] Failed to set DIO1 pin pull down and edge detection: " + err.Error())
 		}
+		if pins.txEn != nil {
+			if err := pins.txEn.Out(Low); err != nil {
+				return nil, errors.New("[ SX126X ] Failed to set TxEn pin state to LOW: " + err.Error())
+			}
+		}
+		if pins.rxEn != nil {
+			if err := pins.rxEn.Out(Low); err != nil {
+				return nil, errors.New("[ SX126X ] Failed to set RxEn pin state to LOW: " + err.Error())
+			}
+		}
+		if pins.cs != nil {
+			if err := pins.cs.Out(High); err != nil {
+				return nil, errors.New("[ SX126X ] Failed to set CS pin state to HIGH: " + err.Error())
+			}
+		}
+		dev.gpio = pins
 	}
-	dev.gpio = pins
 
 	if cfg.RxQueueSize <= 0 {
 		cfg.RxQueueSize = 10

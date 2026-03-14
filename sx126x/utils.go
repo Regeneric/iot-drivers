@@ -13,6 +13,22 @@ func WithLogger(log Logger) Option {
 	}
 }
 
+func WithPinReg(reg Pin) Option {
+	return func(d *Device) {
+		if reg != nil {
+			d.gpioreg = reg
+		}
+	}
+}
+
+func WithPins(pins *pinsDirection) Option {
+	return func(d *Device) {
+		if pins != nil {
+			d.gpio = pins
+		}
+	}
+}
+
 func Hex8(b uint8) string {
 	const hexChars = "0123456789ABCDEF"
 	return string([]byte{'0', 'x', hexChars[b>>4], hexChars[b&0x0F]})
