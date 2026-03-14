@@ -126,7 +126,7 @@ type PinIO interface {
 }
 
 // https://pkg.go.dev/periph.io/x/conn/v3/gpio/gpioreg#ByName
-type Pin interface {
+type PinProvider interface {
 	ByName(name string) PinIO
 }
 
@@ -214,7 +214,7 @@ type Device struct {
 	Config  *Config
 	Status  Status
 	Queue   Queue
-	gpioreg Pin
+	gpioreg PinProvider
 	gpio    *pinsDirection
 	irqChan chan struct{}
 	log     Logger

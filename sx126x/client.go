@@ -40,6 +40,8 @@ func New(conn Bus, cfg *Config, opts ...Option) (*Device, error) {
 
 	// We can define and configure pins in the higher abstraction layer
 	if dev.gpioreg != nil {
+		log.Info("[ SX1262 ] Pin provider present. Configuring all pins on modem")
+
 		loadPin := func(name string) (PinIO, error) {
 			p := dev.gpioreg.ByName(name)
 			if p == nil {
@@ -98,6 +100,8 @@ func New(conn Bus, cfg *Config, opts ...Option) (*Device, error) {
 			}
 		}
 		dev.gpio = pins
+	} else {
+		log.Warn("[ SX126X ] No pin provider present. All pins will not be configured during modem setup")
 	}
 
 	if cfg.RxQueueSize <= 0 {

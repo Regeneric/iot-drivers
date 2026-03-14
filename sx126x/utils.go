@@ -13,7 +13,7 @@ func WithLogger(log Logger) Option {
 	}
 }
 
-func WithPinReg(reg Pin) Option {
+func WithPinReg(reg PinProvider) Option {
 	return func(d *Device) {
 		if reg != nil {
 			d.gpioreg = reg
