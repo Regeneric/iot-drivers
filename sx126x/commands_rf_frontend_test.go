@@ -5,8 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"testing"
-
-	"periph.io/x/conn/v3/physic"
 )
 
 func init() {
@@ -382,55 +380,55 @@ func TestSetRfFrequency(t *testing.T) {
 	tests := []struct {
 		name    string
 		desc    string
-		freq    physic.Frequency
+		freq    Frequency
 		txBytes []uint8
 	}{
 		{
 			name:    "RfZero",
 			desc:    "Verifies that providing a zero frequency correctly evaluates through the conversion formula and results in a completely zeroed Phase-Locked Loop step payload.",
-			freq:    0x00000000 * physic.Hertz,
+			freq:    0x00000000 * Hertz,
 			txBytes: []uint8{0x86, 0x00, 0x00, 0x00, 0x00},
 		},
 		{
 			name:    "RfMax32bit",
 			desc:    "Verifies the driver's mathematical stability when provided with the absolute maximum thirty-two-bit frequency value, ensuring that internal sixty-four-bit calculations do not panic and the final result is correctly truncated and packed into the four-byte SPI payload.",
-			freq:    0xFFFFFFFF * physic.Hertz,
+			freq:    0xFFFFFFFF * Hertz,
 			txBytes: []uint8{0x86, 0x0C, 0x6F, 0x7A, 0x0A},
 		},
 		{
 			name:    "RfMinNonzero",
 			desc:    "Verifies that the absolute minimum non-zero frequency is correctly processed by the conversion formula without rounding down to zero, ensuring the lowest possible fractional step is evaluated.",
-			freq:    0x00000001 * physic.Hertz,
+			freq:    0x00000001 * Hertz,
 			txBytes: []uint8{0x86, 0x00, 0x00, 0x00, 0x01},
 		},
 		{
 			name:    "RfMSBOnly",
 			desc:    "Verifies the mathematical conversion and byte packing when provided with a frequency value containing only the most significant bit, ensuring numeric boundary safety during multiplication and division.",
-			freq:    0x80000000 * physic.Hertz,
+			freq:    0x80000000 * Hertz,
 			txBytes: []uint8{0x86, 0x86, 0x37, 0xBD, 0x05},
 		},
 		{
 			name:    "RfShift",
 			desc:    "Verifies that an arbitrary, multi-byte alternating bit pattern is correctly processed by the frequency conversion formula and accurately dispersed across the entire four-byte SPI payload.",
-			freq:    0x12345678 * physic.Hertz,
+			freq:    0x12345678 * Hertz,
 			txBytes: []uint8{0x86, 0x13, 0x16, 0xB7, 0xE4},
 		},
 		{
 			name:    "Rf433M",
 			desc:    "Verifies that the driver correctly calculates and formats the SPI payload for the standard low-band Industrial, Scientific, and Medical radio frequency.",
-			freq:    433 * physic.MegaHertz,
+			freq:    433 * MegaHertz,
 			txBytes: []uint8{0x86, 0x1B, 0x10, 0x00, 0x00},
 		},
 		{
 			name:    "Rf868M",
 			desc:    "Verifies that the driver correctly calculates and formats the SPI payload for the standard European high-band Industrial, Scientific, and Medical radio frequency.",
-			freq:    868 * physic.MegaHertz,
+			freq:    868 * MegaHertz,
 			txBytes: []uint8{0x86, 0x36, 0x40, 0x00, 0x00},
 		},
 		{
 			name:    "Rf915M",
 			desc:    "Verifies that the driver correctly calculates and formats the SPI payload for the standard North American high-band Industrial, Scientific, and Medical radio frequency.",
-			freq:    915 * physic.MegaHertz,
+			freq:    915 * MegaHertz,
 			txBytes: []uint8{0x86, 0x39, 0x30, 0x00, 0x00},
 		},
 	}
