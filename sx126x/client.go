@@ -64,7 +64,7 @@ func New(conn Bus, cfg *Config, opts ...Option) (*Device, error) {
 			return nil, err
 		}
 		if pins.txEn, err = loadPin(cfg.Pins.TxEn); err != nil {
-			return nil, err
+			log.Warn(err.Error())
 		}
 		if pins.rxEn, err = loadPin(cfg.Pins.RxEn); err != nil {
 			log.Warn(err.Error())
