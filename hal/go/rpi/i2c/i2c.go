@@ -9,13 +9,13 @@ import (
 )
 
 type Config struct {
-	Enable  bool
-	Devices map[string]Device
+	Enable  bool              `yaml:"enable" env:"I2C_ENABLE" env-default:"false"`
+	Devices map[string]Device `yaml:"devices"`
 }
 
 type Device struct {
-	Enable bool
-	Name   string
+	Enable bool   `yaml:"enable" env:"I2C_ENABLE" env-default:"false"`
+	Name   string `yaml:"name" env:"I2C_DEVICE" env-default:"0"`
 }
 
 func New(device string) (pi2c.BusCloser, error) {
@@ -37,7 +37,6 @@ func Setup(config *Config) (map[string]pi2c.BusCloser, func(), error) {
 	if config == nil {
 		return nil, func() {}, errors.New("Bus state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, func() {}, errors.New("Bus disabled in the config")
 	}
@@ -76,7 +75,6 @@ func SetupSingle(config *Device) (pi2c.BusCloser, error) {
 	if config == nil {
 		return nil, errors.New("Device state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, errors.New("Device disabled in the config")
 	}

@@ -26,6 +26,13 @@ func (d *Device) IsNil() bool                        { return d == nil }
 func (d *Device) Close()                             { d.bus = nil; d.Pins.SCL = machine.NoPin; d.Pins.SDA = machine.NoPin }
 
 func New(device *Device) (*Device, error) {
+	if device == nil {
+		return nil, errors.New("Bus state improper; device is nil")
+	}
+	if device.Enable == false {
+		return nil, errors.New("Bus disabled in the config")
+	}
+
 	var bus *machine.I2C
 	var scl, sda machine.Pin
 
@@ -58,7 +65,7 @@ func New(device *Device) (*Device, error) {
 	})
 
 	if err != nil {
-		return nil, errors.New("Could not configure I2C bus")
+		return nil, err
 	}
 
 	device.bus = bus
@@ -69,7 +76,6 @@ func Setup(config *Config) (map[string]*Device, func(), error) {
 	if config == nil {
 		return nil, func() {}, errors.New("Bus state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, func() {}, errors.New("Bus disabled in the config")
 	}

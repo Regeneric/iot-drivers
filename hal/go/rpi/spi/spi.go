@@ -10,16 +10,16 @@ import (
 )
 
 type Config struct {
-	Enable  bool
-	Devices map[string]Device
+	Enable  bool              `yaml:"enable" env:"SPI_ENABLE" env-default:"false"`
+	Devices map[string]Device `yaml:"devices"`
 }
 
 type Device struct {
-	Enable      bool
-	Name        string
-	Speed       uint64
-	Mode        pspi.Mode
-	BitsPerWord int
+	Enable      bool      `yaml:"enable" env:"SPI_ENABLE" env-default:"false"`
+	Name        string    `yaml:"name" env:"SPI_DEVICE" env-default:"0"`
+	Speed       uint64    `yaml:"speed" env:"SPI_SPEED" env-default:"10000000"`
+	Mode        pspi.Mode `yaml:"mode" env:"SPI_MODE" env-default:"0"`
+	BitsPerWord int       `yaml:"bits_per_word" env:"SPI_BITS_PER_WORD" env-default:"8"`
 }
 
 func New(device string) (pspi.PortCloser, error) {
@@ -41,7 +41,6 @@ func Setup(config *Config) (map[string]pspi.Conn, func(), error) {
 	if config == nil {
 		return nil, func() {}, errors.New("Bus state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, func() {}, errors.New("Bus disabled in the config")
 	}
@@ -85,7 +84,6 @@ func SetupSingle(config *Device) (pspi.Conn, pspi.PortCloser, error) {
 	if config == nil {
 		return nil, nil, errors.New("Device state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, nil, errors.New("Device disabled in the config")
 	}

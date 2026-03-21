@@ -17,6 +17,7 @@ const (
 
 type Logger struct {
 	LogLevel LogLevel
+	message  string
 }
 
 func ToLevel(l string) (LogLevel, bool) {
@@ -37,49 +38,70 @@ func ToLevel(l string) (LogLevel, bool) {
 	return level, ok
 }
 
-func kvPrint(kv ...any) {
+func kvPrint(kv ...any) string {
+	var m strings.Builder
 	for i := 0; i+1 < len(kv); i += 2 {
-		if i%2 != 0 {
-			break
-		}
-
-		print(" ")
-		print(kv[i])
-		print("=")
-		print(kv[i+1])
+		m.WriteString(" " + kv[i].(string) + "=" + kv[i+1].(string))
 	}
+
+	print(m)
+	return m.String()
 }
 
-func (l *Logger) With(kv ...any) *Logger { return l } // TODO
+// TODO
+func (l *Logger) With(kv ...any) *Logger {
+	l.message += kvPrint(kv...)
+	return l
+}
 
 func (l *Logger) Debug(msg string, kv ...any) {
 	if l.LogLevel >= DEBUG {
-		print("[DBG] " + msg)
-		kvPrint(kv...)
-		print("\r\n")
+		var m strings.Builder
+
+		m.WriteString("[DBG] " + msg)
+		m.WriteString(kvPrint(kv...))
+		m.WriteString("\r\n")
+
+		print(m)
+		l.message = m.String()
 	}
 }
 
 func (l *Logger) Info(msg string, kv ...any) {
 	if l.LogLevel >= INFO {
-		print("[INF] " + msg)
-		kvPrint(kv...)
-		print("\r\n")
+		var m strings.Builder
+
+		m.WriteString("[INF] " + msg)
+		m.WriteString(kvPrint(kv...))
+		m.WriteString("\r\n")
+
+		print(m)
+		l.message = m.String()
 	}
 }
 
 func (l *Logger) Warn(msg string, kv ...any) {
 	if l.LogLevel >= WARN {
-		print("[WRN] " + msg)
-		kvPrint(kv...)
-		print("\r\n")
+		var m strings.Builder
+
+		m.WriteString("[WRN] " + msg)
+		m.WriteString(kvPrint(kv...))
+		m.WriteString("\r\n")
+
+		print(m)
+		l.message = m.String()
 	}
 }
 
 func (l *Logger) Error(msg string, kv ...any) {
 	if l.LogLevel >= ERROR {
-		print("[ERR] " + msg)
-		kvPrint(kv...)
-		print("\r\n")
+		var m strings.Builder
+
+		m.WriteString("[ERR] " + msg)
+		m.WriteString(kvPrint(kv...))
+		m.WriteString("\r\n")
+
+		print(m)
+		l.message = m.String()
 	}
 }

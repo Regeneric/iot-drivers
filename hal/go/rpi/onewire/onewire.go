@@ -9,13 +9,13 @@ import (
 )
 
 type Config struct {
-	Enable  bool
-	Devices map[string]Device
+	Enable  bool              `yaml:"enable" env:"ONEWIRE_ENABLE" env-default:"false"`
+	Devices map[string]Device `yaml:"devices"`
 }
 
 type Device struct {
-	Enable bool
-	Name   string
+	Enable bool   `yaml:"enable" env:"ONEWIRE_ENABLE" env-default:"false"`
+	Name   string `yaml:"name" env:"ONEWIRE_DEVICE" env-default:"1"`
 }
 
 func New(device string) (ponewire.BusCloser, error) {
@@ -36,7 +36,6 @@ func Setup(config *Config) (map[string]ponewire.BusCloser, func(), error) {
 	if config == nil {
 		return nil, func() {}, errors.New("Bus state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, func() {}, errors.New("Bus disabled in the config")
 	}
@@ -75,7 +74,6 @@ func SetupSingle(config *Device) (ponewire.BusCloser, error) {
 	if config == nil {
 		return nil, errors.New("Device state improper; config is nil")
 	}
-
 	if config.Enable == false {
 		return nil, errors.New("Device disabled in the config")
 	}
